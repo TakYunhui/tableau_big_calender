@@ -1,20 +1,33 @@
 <?xml version="1.0" encoding="utf-8"?>
-<manifest manifest-version="0.1" xmlns="http://www.tableau.com/xml/extension_manifest">
+<manifest
+  xmlns="http://www.tableau.com/xml/extension_manifest"
+  xmlns:xsi="http://www.w3.org/2001/XMLSchema-instance"
+  xsi:schemaLocation="http://www.tableau.com/xml/extension_manifest extension_manifest.xsd"
+  manifest-version="0.1">
+
   <dashboard-extension id="com.takyunhui.bigcalendar" extension-version="1.0.0">
     <default-locale>ko_KR</default-locale>
 
-    <name>Big Calendar Date Picker</name>
-    <description>Large date range picker for Tableau parameters.</description>
+    <name resource-id="name"/>
+    <description resource-id="desc"/>
 
-    <author name="TakYunhui" />
-
+    <author name="TakYunhui" organization="Internal" website="https://takyunhui.github.io/tableau_big_calender/"/>
     <min-api-version>1.7</min-api-version>
 
     <source-location>
       <url>https://takyunhui.github.io/tableau_big_calender/</url>
     </source-location>
 
-    <!-- 아이콘은 선택사항. 없어도 됨 -->
     <icon>iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMBAp+X2ZsAAAAASUVORK5CYII=</icon>
   </dashboard-extension>
+
+  <resources>
+    <resource id="name">
+      <text locale="ko_KR">Big Calendar Date Picker</text>
+    </resource>
+    <resource id="desc">
+      <text locale="ko_KR">Large date range picker for Tableau parameters.</text>
+    </resource>
+  </resources>
+
 </manifest>
