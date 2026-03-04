@@ -4,98 +4,153 @@
 }
 *{box-sizing:border-box}
 html,body{height:100%}
-body{margin:0;background:var(--bg);color:var(--text);
-  font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Apple SD Gothic Neo","Noto Sans KR",Arial,sans-serif}
-.app{padding:14px;max-width:640px}
-.topbar{display:flex;gap:10px;align-items:center;justify-content:space-between;margin-bottom:10px}
-.title{font-size:16px;font-weight:700}
+body{
+  margin:0;background:var(--bg);color:var(--text);
+  font-family:ui-sans-serif,system-ui,-apple-system,Segoe UI,Roboto,"Apple SD Gothic Neo","Noto Sans KR",Arial,sans-serif
+}
+.app{
+  padding:10px;
+  /* Tableau 확장 컨테이너가 작아도 깔끔하게 */
+  max-width:100%;
+}
+
+/* 상단 기간바 */
+.rangeBar{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  background:var(--card);border:1px solid var(--line);
+  padding:10px 12px;border-radius:14px;
+  cursor:pointer; user-select:none;
+}
+.rangeBar:hover{border-color:rgba(255,255,255,.16)}
+.rangeTitle{font-size:12px;color:var(--muted);margin-bottom:4px}
+.rangeValue{font-size:14px;font-weight:800}
+.rangeSep{margin:0 6px;color:rgba(255,255,255,.55)}
+.caret{opacity:.8;font-size:12px}
+
+/* 펼침 패널 */
+.panel{
+  margin-top:10px;
+  background:var(--card);
+  border:1px solid var(--line);
+  border-radius:14px;
+  padding:10px;
+}
+.hidden{display:none}
+
+.panelTop{
+  display:flex;align-items:center;justify-content:space-between;gap:10px;
+  margin-bottom:10px
+}
+.modeHint{font-size:12px;color:rgba(255,255,255,.75)}
+.actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
+
+/* 버튼 */
+.btn{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.04);
+  color:var(--text);
+  padding:8px 10px;border-radius:10px;
+  cursor:pointer;font-size:12px;
+}
+.btn:hover{border-color:rgba(255,255,255,.16)}
+.btn.primary{background:rgba(79,140,255,.18);border-color:rgba(79,140,255,.35)}
+.btn.sm{padding:6px 8px;border-radius:9px;font-size:12px}
 
 .toggle{display:inline-flex;gap:6px;align-items:center;font-size:12px;color:var(--muted);user-select:none}
 .toggle input{transform:translateY(1px)}
 
-.btn{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);
-  padding:8px 10px;border-radius:10px;cursor:pointer;font-size:12px}
-.btn:hover{border-color:rgba(255,255,255,.16)}
-.btn.primary{background:rgba(79,140,255,.18);border-color:rgba(79,140,255,.35)}
-.btn.ghost{background:transparent;border-color:transparent;color:var(--muted)}
-.btn.sm{padding:6px 8px;border-radius:9px;font-size:12px}
-
-.navHeader{display:grid;grid-template-columns:42px 1fr 42px;align-items:center;gap:8px;
-  background:var(--card);border:1px solid var(--line);padding:10px;border-radius:14px;margin-bottom:10px}
-.navBtn{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);
-  height:36px;border-radius:12px;cursor:pointer}
-.navCenter{display:flex;justify-content:center;gap:8px}
-.navPill{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);
-  padding:8px 10px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:650}
-.navPill:hover{border-color:rgba(255,255,255,.16)}
-
-.panel{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px;margin-bottom:10px}
-.panel.hidden{display:none}
-.panelHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px}
-.panelTitle{color:var(--muted);font-size:12px}
-.grid{display:grid;gap:8px}
-.grid.years{grid-template-columns:repeat(5,1fr)}
-.grid.months{grid-template-columns:repeat(4,1fr)}
-.cell{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);
-  padding:10px 8px;border-radius:12px;cursor:pointer;text-align:center;font-size:13px}
-.cell:hover{border-color:rgba(255,255,255,.16)}
-.cell.active{border-color:rgba(79,140,255,.65);background:rgba(79,140,255,.18)}
-
-.calendarWrap{background:var(--card);border:1px solid var(--line);border-radius:14px;padding:10px}
-
-/* Flatpickr sizing */
-.flatpickr-calendar.inline{width:100%!important}
-.flatpickr-rContainer{width:100%!important}
-.flatpickr-days,.dayContainer{width:100%!important;min-width:100%!important}
-.flatpickr-day{height:40px!important;line-height:40px!important;max-width:none!important;
-  border-radius:10px!important;margin:2px 0!important;font-size:13px!important}
-
-/* Basic row (always visible) */
-.seRow{display:grid;grid-template-columns:1fr 1fr auto;gap:10px;margin-top:10px;align-items:stretch}
-.seRow.basic{margin-top:0}
-.seBox{border:1px solid var(--line);background:rgba(255,255,255,.04);border-radius:14px;
-  padding:10px 12px;text-align:left;cursor:pointer;display:grid;gap:6px}
+/* 시작/종료 박스 */
+.seRow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
+.seBox{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.04);
+  border-radius:14px;
+  padding:10px 12px;
+  text-align:left;
+  cursor:pointer;
+  display:grid;gap:6px
+}
 .seBox:hover{border-color:rgba(255,255,255,.16)}
 .seBox.active{border-color:rgba(45,212,191,.6);background:rgba(45,212,191,.12)}
 .seLabel{color:var(--muted);font-size:12px}
-.seValue{font-size:14px;font-weight:700}
+.seValue{font-size:14px;font-weight:800}
 
+/* 네비게이션 */
+.navHeader{
+  display:grid;grid-template-columns:42px 1fr 42px;align-items:center;gap:8px;
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.03);
+  padding:8px;border-radius:14px;margin-bottom:10px
+}
+.navBtn{
+  border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);
+  height:34px;border-radius:12px;cursor:pointer
+}
+.navCenter{display:flex;justify-content:center;gap:8px}
+.navPill{
+  border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);
+  padding:7px 10px;border-radius:999px;cursor:pointer;font-size:13px;font-weight:700
+}
+.navPill:hover{border-color:rgba(255,255,255,.16)}
+
+/* 연/월 패널 */
+.subPanel{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.03);
+  border-radius:14px;
+  padding:10px;
+  margin-bottom:10px;
+}
+.subHead{display:flex;align-items:center;justify-content:space-between;margin-bottom:10px;gap:10px}
+.subTitle{color:var(--muted);font-size:12px}
+
+.grid{display:grid;gap:8px}
+.grid.years{grid-template-columns:repeat(5,1fr)}
+.grid.months{grid-template-columns:repeat(4,1fr)}
+.cell{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.04);
+  color:var(--text);
+  padding:10px 8px;
+  border-radius:12px;
+  cursor:pointer;
+  text-align:center;
+  font-size:13px;
+}
+.cell:hover{border-color:rgba(255,255,255,.16)}
+.cell.active{border-color:rgba(79,140,255,.65);background:rgba(79,140,255,.18)}
+
+/* 달력 */
+.calendarWrap{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.03);
+  border-radius:14px;
+  padding:8px;
+}
+
+/* flatpickr 크기/가독성 */
+.flatpickr-calendar.inline{width:100%!important}
+.flatpickr-rContainer{width:100%!important}
+.flatpickr-days,.dayContainer{width:100%!important;min-width:100%!important}
+.flatpickr-day{
+  height:34px!important;line-height:34px!important;
+  max-width:none!important;border-radius:10px!important;
+  margin:1px 0!important;font-size:12px!important
+}
+
+/* 퀵 버튼 */
 .quickRow{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
-.chip{border:1px solid var(--line);background:rgba(255,255,255,.04);color:var(--text);
-  padding:8px 10px;border-radius:999px;cursor:pointer;font-size:12px}
+.chip{
+  border:1px solid var(--line);
+  background:rgba(255,255,255,.04);
+  color:var(--text);
+  padding:7px 10px;
+  border-radius:999px;
+  cursor:pointer;
+  font-size:12px;
+}
 .chip:hover{border-color:rgba(255,255,255,.16)}
 
-.statusRow{display:flex;align-items:center;justify-content:space-between;margin-top:10px;gap:10px}
+/* 상태 */
+.statusRow{margin-top:10px}
 .status{color:var(--muted);font-size:12px}
-.modeTag{font-size:12px;color:rgba(255,255,255,.75);border:1px solid var(--line);
-  padding:6px 8px;border-radius:999px}
-
-/* ✅ Modal */
-.modal.hidden{display:none}
-.modal{position:fixed;inset:0;z-index:9999}
-.modalBackdrop{position:absolute;inset:0;background:rgba(0,0,0,.55)}
-.modalCard{
-  position:relative;
-  margin:20px auto;
-  max-width:720px;
-  width:calc(100% - 24px);
-  background:var(--bg);
-  border:1px solid var(--line);
-  border-radius:16px;
-  padding:12px;
-  box-shadow:0 20px 60px rgba(0,0,0,.45)
-}
-.modalTop{
-  display:flex;
-  align-items:center;
-  justify-content:space-between;
-  gap:10px;
-  margin-bottom:10px
-}
-.modalTitle{font-size:14px;font-weight:800}
-.modalActions{
-  display:flex;
-  align-items:center;
-  gap:8px;
-  flex-wrap:wrap
-}
