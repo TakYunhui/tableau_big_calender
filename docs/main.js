@@ -1,369 +1,110 @@
-const CONFIG = {
-  PARAM_START: "pStartDate",
-  PARAM_END: "pEndDate",
-  DEFAULT_PRESET: "last30",
-  AUTO_APPLY_DEFAULT: false,
-  CLOSE_ON_APPLY: true // ✅ 적용 누르면 모달 닫기
-};
+<!doctype html>
+<html lang="ko">
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>Big Calendar Date Picker</title>
 
-let fp = null;
-let tableauReady = false;
-let dashboard = null;
-let paramStart = null;
-let paramEnd = null;
+  <!-- 캐시 완화(선택) -->
+  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
+  <meta http-equiv="Pragma" content="no-cache" />
+  <meta http-equiv="Expires" content="0" />
 
-let mode = "range"; // range | editStart | editEnd
-let startDate = null;
-let endDate = null;
-let decadeStartYear = null;
+  <script src="./lib/tableau.extensions.1.latest.min.js"></script>
+  <link rel="stylesheet" href="./lib/flatpickr.min.css" />
+  <script src="./lib/flatpickr.min.js"></script>
 
-// DOM
-const el = (id) => document.getElementById(id);
-const setStatus = (msg) => (el("status").textContent = msg);
+  <link rel="stylesheet" href="./styles.css" />
+</head>
 
-function pad2(n){ return String(n).padStart(2,"0"); }
-function clamp(d){ return d ? new Date(d.getFullYear(), d.getMonth(), d.getDate()) : null; }
-function ymd(d){ return d ? `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}` : "-"; }
+<body>
+  <div class="app">
+    <!-- 상단: 기간 표시(항상 보임) -->
+    <div class="rangeBar" id="rangeBar" role="button" tabindex="0" aria-label="기간 선택 열기">
+      <div class="rangeLeft">
+        <div class="rangeTitle">조회 기간</div>
+        <div class="rangeValue">
+          <span id="txtStart">-</span>
+          <span class="rangeSep">~</span>
+          <span id="txtEnd">-</span>
+        </div>
+      </div>
+      <div class="rangeRight">
+        <span class="caret" id="caret">▼</span>
+      </div>
+    </div>
 
-function parseToDate(v){
-  if (!v) return null;
-  if (v instanceof Date && !isNaN(v)) return clamp(v);
-  const s = String(v).trim();
-  const m = s.match(/^(\d{4})-(\d{2})-(\d{2})/);
-  if (m) return new Date(+m[1], +m[2]-1, +m[3]);
-  const dt = new Date(s);
-  return isNaN(dt) ? null : clamp(dt);
-}
+    <!-- 펼침 패널(기본 숨김) -->
+    <div class="panel hidden" id="pickerPanel" aria-hidden="true">
+      <div class="panelTop">
+        <div class="modeHint" id="modeHint">범위 선택</div>
+        <div class="actions">
+          <label class="toggle">
+            <input id="toggleAutoApply" type="checkbox" />
+            <span>즉시 적용</span>
+          </label>
+          <button id="btnApply" class="btn primary" type="button">적용</button>
+          <button id="btnReset" class="btn" type="button">초기화</button>
+        </div>
+      </div>
 
-function normalizeRange(s,e){
-  const ss = clamp(s), ee = clamp(e);
-  if (ss && ee && ss.getTime() > ee.getTime()) return { s: ee, e: ss };
-  return { s: ss, e: ee };
-}
+      <div class="seRow">
+        <button id="boxStart" class="seBox" type="button">
+          <div class="seLabel">시작일</div>
+          <div id="txtStartBox" class="seValue">-</div>
+        </button>
 
-function setMode(next){
-  mode = next;
-  el("mode").textContent = `MODE: ${mode}`;
-  el("boxStart").classList.toggle("active", mode === "editStart");
-  el("boxEnd").classList.toggle("active", mode === "editEnd");
-}
+        <button id="boxEnd" class="seBox" type="button">
+          <div class="seLabel">종료일</div>
+          <div id="txtEndBox" class="seValue">-</div>
+        </button>
+      </div>
 
-function hidePanels(){
-  el("panelYear").classList.add("hidden");
-  el("panelYear").setAttribute("aria-hidden","true");
-  el("panelMonth").classList.add("hidden");
-  el("panelMonth").setAttribute("aria-hidden","true");
-}
-function showYearPanel(){
-  el("panelYear").classList.remove("hidden");
-  el("panelYear").setAttribute("aria-hidden","false");
-  el("panelMonth").classList.add("hidden");
-  el("panelMonth").setAttribute("aria-hidden","true");
-}
-function showMonthPanel(){
-  el("panelMonth").classList.remove("hidden");
-  el("panelMonth").setAttribute("aria-hidden","false");
-  el("panelYear").classList.add("hidden");
-  el("panelYear").setAttribute("aria-hidden","true");
-}
+      <div class="navHeader">
+        <button id="btnPrevMonth" class="navBtn" title="이전 달" type="button">◀</button>
+        <div class="navCenter">
+          <button id="btnYear" class="navPill" type="button">2026년</button>
+          <button id="btnMonth" class="navPill" type="button">3월</button>
+        </div>
+        <button id="btnNextMonth" class="navBtn" title="다음 달" type="button">▶</button>
+      </div>
 
-function autoApply(){ return !!el("toggleAutoApply").checked; }
+      <div id="panelYear" class="subPanel hidden" aria-hidden="true">
+        <div class="subHead">
+          <button id="btnPrevDecade" class="btn sm" type="button">이전 10년</button>
+          <div id="txtDecade" class="subTitle">2020~2029</div>
+          <button id="btnNextDecade" class="btn sm" type="button">다음 10년</button>
+        </div>
+        <div id="gridYears" class="grid years"></div>
+      </div>
 
-// ✅ Modal open/close
-function openPicker(){
-  const m = el("pickerModal");
-  m.classList.remove("hidden");
-  m.setAttribute("aria-hidden","false");
-  hidePanels();
+      <div id="panelMonth" class="subPanel hidden" aria-hidden="true">
+        <div class="subHead">
+          <div class="subTitle">월 선택</div>
+          <button id="btnCloseMonth" class="btn sm" type="button">닫기</button>
+        </div>
+        <div id="gridMonths" class="grid months"></div>
+      </div>
 
-  // 모달 열릴 때 달력 레이아웃/헤더 동기화
-  if (fp){
-    fp.jumpToDate(endDate || startDate || today(), true);
-    setNavHeader();
-    renderYearGrid();
-    renderMonthGrid();
-  }
-}
-function closePicker(){
-  const m = el("pickerModal");
-  m.classList.add("hidden");
-  m.setAttribute("aria-hidden","true");
-  hidePanels();
-}
+      <div class="calendarWrap">
+        <div id="calendar"></div>
+      </div>
 
-function updateUI(){
-  el("txtStart").textContent = ymd(startDate);
-  el("txtEnd").textContent = ymd(endDate);
-  if (fp){
-    if (startDate && endDate) fp.setDate([startDate, endDate], false);
-    else if (startDate) fp.setDate([startDate], false);
-  }
-}
+      <div class="quickRow">
+        <button class="chip" data-preset="today" type="button">오늘</button>
+        <button class="chip" data-preset="last7" type="button">최근 7일</button>
+        <button class="chip" data-preset="last30" type="button">최근 30일</button>
+        <button class="chip" data-preset="thisMonth" type="button">이번달</button>
+        <button class="chip" data-preset="last3m" type="button">최근 3개월</button>
+        <button class="chip" data-preset="ytd" type="button">YTD</button>
+      </div>
 
-function today(){
-  const n = new Date();
-  return new Date(n.getFullYear(), n.getMonth(), n.getDate());
-}
-function addDays(d, k){
-  const x = new Date(d);
-  x.setDate(x.getDate()+k);
-  return clamp(x);
-}
-function firstDayOfMonth(d){ return new Date(d.getFullYear(), d.getMonth(), 1); }
-function lastDayOfMonth(d){ return new Date(d.getFullYear(), d.getMonth()+1, 0); }
-function addMonths(d, m){
-  const x = new Date(d.getFullYear(), d.getMonth()+m, 1);
-  const day = Math.min(d.getDate(), lastDayOfMonth(x).getDate());
-  return new Date(x.getFullYear(), x.getMonth(), day);
-}
-function preset(name){
-  const t = today();
-  switch(name){
-    case "today": return { s:t, e:t };
-    case "last7": return { s:addDays(t,-6), e:t };
-    case "last30": return { s:addDays(t,-29), e:t };
-    case "thisMonth": return { s:firstDayOfMonth(t), e:lastDayOfMonth(t) };
-    case "last3m": return { s:addMonths(t,-3), e:t };
-    case "ytd": return { s:new Date(t.getFullYear(),0,1), e:t };
-    default: return { s:addDays(t,-29), e:t };
-  }
-}
+      <div class="statusRow">
+        <div id="status" class="status">Tableau 연결 중…</div>
+      </div>
+    </div>
+  </div>
 
-async function applyToTableau(){
-  if (!tableauReady) return setStatus("Tableau 연결 전");
-  if (!startDate || !endDate) return setStatus("시작/종료일을 모두 선택하세요");
-
-  try{
-    setStatus("적용 중…");
-    await paramStart.changeValueAsync(ymd(startDate));
-    await paramEnd.changeValueAsync(ymd(endDate));
-    setStatus("적용 완료");
-    if (CONFIG.CLOSE_ON_APPLY) closePicker();
-  }catch(err){
-    console.error(err);
-    setStatus("적용 실패(권한/파라미터 확인)");
-  }
-}
-
-function setRange(s,e, jump=true){
-  const norm = normalizeRange(s,e);
-  startDate = norm.s;
-  endDate = norm.e;
-  updateUI();
-  if (fp && jump) fp.jumpToDate(endDate || startDate || today(), true);
-}
-
-function setFromPreset(name){
-  const {s,e} = preset(name);
-  setRange(s,e,true);
-  setMode("range");
-  hidePanels();
-  if (autoApply()) applyToTableau();
-}
-
-function visibleYear(){ return fp ? fp.currentYear : today().getFullYear(); }
-function visibleMonth(){ return fp ? fp.currentMonth : today().getMonth(); }
-
-function setNavHeader(){
-  const y = visibleYear();
-  const m = visibleMonth();
-  el("btnYear").textContent = `${y}년`;
-  el("btnMonth").textContent = `${m+1}월`;
-  decadeStartYear = Math.floor(y/10)*10;
-  el("txtDecade").textContent = `${decadeStartYear}~${decadeStartYear+9}`;
-}
-
-function renderYearGrid(){
-  const base = decadeStartYear ?? Math.floor(visibleYear()/10)*10;
-  decadeStartYear = base;
-  el("txtDecade").textContent = `${base}~${base+9}`;
-  const grid = el("gridYears");
-  grid.innerHTML = "";
-
-  const active = visibleYear();
-  for (let i=0;i<10;i++){
-    const year = base+i;
-    const b = document.createElement("button");
-    b.type="button";
-    b.className="cell"+(year===active?" active":"");
-    b.textContent=String(year);
-    b.onclick=()=>{
-      fp.changeYear(year);
-      setNavHeader();
-      renderYearGrid();
-      hidePanels();
-    };
-    grid.appendChild(b);
-  }
-}
-
-function renderMonthGrid(){
-  const grid = el("gridMonths");
-  grid.innerHTML = "";
-  const active = visibleMonth();
-  for (let m=1;m<=12;m++){
-    const b = document.createElement("button");
-    b.type="button";
-    b.className="cell"+((m-1)===active?" active":"");
-    b.textContent=`${m}월`;
-    b.onclick=()=>{
-      fp.changeMonth(m-1);
-      setNavHeader();
-      renderMonthGrid();
-      hidePanels();
-    };
-    grid.appendChild(b);
-  }
-}
-
-function initFlatpickr(){
-  fp = flatpickr("#calendar", {
-    inline: true,
-    mode: "range",
-    dateFormat: "Y-m-d",
-    defaultDate: (startDate && endDate) ? [startDate, endDate] : (startDate ? [startDate] : null),
-    clickOpens: false,
-    onReady: () => {
-      setNavHeader();
-      renderYearGrid();
-      renderMonthGrid();
-    },
-    onMonthChange: () => { setNavHeader(); renderYearGrid(); renderMonthGrid(); },
-    onYearChange: () => { setNavHeader(); renderYearGrid(); },
-    onChange: (selected) => {
-      if (!selected || selected.length===0) return;
-
-      // 개별 수정 모드
-      if (mode === "editStart" || mode === "editEnd"){
-        const picked = clamp(selected[0]);
-        let s = startDate ? new Date(startDate) : null;
-        let e = endDate ? new Date(endDate) : null;
-        if (mode === "editStart") s = picked;
-        if (mode === "editEnd") e = picked;
-        if (!s && e) s = new Date(e);
-        if (!e && s) e = new Date(s);
-        const norm = normalizeRange(s,e);
-        setRange(norm.s, norm.e, false);
-        setMode("range");
-        if (autoApply()) applyToTableau();
-        return;
-      }
-
-      // range 기본 선택
-      if (selected.length===1){
-        startDate = clamp(selected[0]);
-        endDate = null;
-        updateUI();
-        return;
-      }
-      const norm = normalizeRange(selected[0], selected[1]);
-      setRange(norm.s, norm.e, false);
-      if (autoApply()) applyToTableau();
-    }
-  });
-}
-
-async function findParams(){
-  const params = await dashboard.getParametersAsync();
-  paramStart = params.find(p=>p.name===CONFIG.PARAM_START);
-  paramEnd = params.find(p=>p.name===CONFIG.PARAM_END);
-  if (!paramStart || !paramEnd) throw new Error(`파라미터 없음: ${CONFIG.PARAM_START}, ${CONFIG.PARAM_END}`);
-
-  paramStart.addEventListener(tableau.TableauEventType.ParameterChanged, ()=>syncFromTableau("start"));
-  paramEnd.addEventListener(tableau.TableauEventType.ParameterChanged, ()=>syncFromTableau("end"));
-}
-
-async function syncFromTableau(reason){
-  if (!tableauReady) return;
-  try{
-    const s = parseToDate(paramStart.currentValue.value);
-    const e = parseToDate(paramEnd.currentValue.value);
-    const norm = normalizeRange(s,e);
-    startDate = norm.s;
-    endDate = norm.e;
-    updateUI();
-    if (fp) fp.jumpToDate(endDate || startDate || today(), true);
-    setNavHeader(); renderYearGrid(); renderMonthGrid();
-    setStatus(`동기화됨(${reason})`);
-  }catch(err){
-    console.error(err);
-    setStatus("동기화 실패");
-  }
-}
-
-function wireUI(){
-  el("toggleAutoApply").checked = CONFIG.AUTO_APPLY_DEFAULT;
-
-  // ✅ 기본 화면에서 열기
-  el("btnOpenPicker").onclick = () => { setMode("range"); openPicker(); };
-
-  // ✅ 시작/종료 박스 클릭 시 모달 + 해당 모드로
-  el("boxStart").onclick = () => { setMode("editStart"); openPicker(); };
-  el("boxEnd").onclick = () => { setMode("editEnd"); openPicker(); };
-
-  // ✅ 닫기
-  el("btnClosePicker").onclick = closePicker;
-  el("pickerBackdrop").onclick = closePicker;
-  document.addEventListener("keydown", (e)=>{ if (e.key === "Escape") closePicker(); });
-
-  // 모달 내 버튼
-  el("btnApply").onclick = applyToTableau;
-  el("btnReset").onclick = () => setFromPreset(CONFIG.DEFAULT_PRESET);
-
-  el("btnPrevMonth").onclick = () => { fp && fp.changeMonth(fp.currentMonth-1); hidePanels(); };
-  el("btnNextMonth").onclick = () => { fp && fp.changeMonth(fp.currentMonth+1); hidePanels(); };
-
-  el("btnYear").onclick = () => { if(!fp) return; showYearPanel(); decadeStartYear = Math.floor(visibleYear()/10)*10; renderYearGrid(); };
-  el("btnMonth").onclick = () => { if(!fp) return; showMonthPanel(); renderMonthGrid(); };
-  el("btnPrevDecade").onclick = () => { decadeStartYear = (decadeStartYear ?? Math.floor(visibleYear()/10)*10) - 10; renderYearGrid(); };
-  el("btnNextDecade").onclick = () => { decadeStartYear = (decadeStartYear ?? Math.floor(visibleYear()/10)*10) + 10; renderYearGrid(); };
-  el("btnCloseMonth").onclick = hidePanels;
-
-  document.querySelectorAll(".chip").forEach(b=>{
-    b.onclick = () => setFromPreset(b.getAttribute("data-preset"));
-  });
-
-  document.addEventListener("click", (e)=>{
-    const inside = el("panelYear").contains(e.target) || el("panelMonth").contains(e.target) ||
-                   el("btnYear").contains(e.target) || el("btnMonth").contains(e.target);
-    if (!inside) hidePanels();
-  });
-}
-
-async function init(){
-  wireUI();
-  setMode("range");
-
-  try{
-    setStatus("Tableau 초기화…");
-    await tableau.extensions.initializeAsync();
-    tableauReady = true;
-    dashboard = tableau.extensions.dashboardContent.dashboard;
-
-    await findParams();
-
-    const s = parseToDate(paramStart.currentValue.value);
-    const e = parseToDate(paramEnd.currentValue.value);
-    const norm = normalizeRange(s,e);
-    startDate = norm.s;
-    endDate = norm.e;
-
-    if (!startDate || !endDate){
-      const {s:ds, e:de} = preset(CONFIG.DEFAULT_PRESET);
-      setRange(ds,de,true);
-    }
-
-    initFlatpickr();
-    updateUI();
-    setStatus("준비 완료");
-  }catch(err){
-    console.error(err);
-    const {s,e} = preset(CONFIG.DEFAULT_PRESET);
-    setRange(s,e,true);
-    initFlatpickr();
-    updateUI();
-    setStatus("Tableau 연결 실패(권한/URL/manifest 확인)");
-  }
-}
-
-init();
+  <script src="./main.js"></script>
+</body>
+</html>
