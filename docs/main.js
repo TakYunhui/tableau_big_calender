@@ -2,7 +2,8 @@ const CONFIG = {
   PARAM_START: "pStartDate",
   PARAM_END: "pEndDate",
   DEFAULT_PRESET: "last30",
-  AUTO_APPLY_DEFAULT: false
+  AUTO_APPLY_DEFAULT: false,
+  CLOSE_ON_APPLY: true // ✅ 적용 누르면 모달 닫기
 };
 
 let fp = null;
@@ -14,10 +15,6 @@ let paramEnd = null;
 let mode = "range"; // range | editStart | editEnd
 let startDate = null;
 let endDate = null;
-
-let pendingStart = null;
-let pendingEnd = null;
-
 let decadeStartYear = null;
 
 // DOM
@@ -72,6 +69,28 @@ function showMonthPanel(){
 
 function autoApply(){ return !!el("toggleAutoApply").checked; }
 
+// ✅ Modal open/close
+function openPicker(){
+  const m = el("pickerModal");
+  m.classList.remove("hidden");
+  m.setAttribute("aria-hidden","false");
+  hidePanels();
+
+  // 모달 열릴 때 달력 레이아웃/헤더 동기화
+  if (fp){
+    fp.jumpToDate(endDate || startDate || today(), true);
+    setNavHeader();
+    renderYearGrid();
+    renderMonthGrid();
+  }
+}
+function closePicker(){
+  const m = el("pickerModal");
+  m.classList.add("hidden");
+  m.setAttribute("aria-hidden","true");
+  hidePanels();
+}
+
 function updateUI(){
   el("txtStart").textContent = ymd(startDate);
   el("txtEnd").textContent = ymd(endDate);
@@ -119,6 +138,7 @@ async function applyToTableau(){
     await paramStart.changeValueAsync(ymd(startDate));
     await paramEnd.changeValueAsync(ymd(endDate));
     setStatus("적용 완료");
+    if (CONFIG.CLOSE_ON_APPLY) closePicker();
   }catch(err){
     console.error(err);
     setStatus("적용 실패(권한/파라미터 확인)");
@@ -274,6 +294,19 @@ async function syncFromTableau(reason){
 function wireUI(){
   el("toggleAutoApply").checked = CONFIG.AUTO_APPLY_DEFAULT;
 
+  // ✅ 기본 화면에서 열기
+  el("btnOpenPicker").onclick = () => { setMode("range"); openPicker(); };
+
+  // ✅ 시작/종료 박스 클릭 시 모달 + 해당 모드로
+  el("boxStart").onclick = () => { setMode("editStart"); openPicker(); };
+  el("boxEnd").onclick = () => { setMode("editEnd"); openPicker(); };
+
+  // ✅ 닫기
+  el("btnClosePicker").onclick = closePicker;
+  el("pickerBackdrop").onclick = closePicker;
+  document.addEventListener("keydown", (e)=>{ if (e.key === "Escape") closePicker(); });
+
+  // 모달 내 버튼
   el("btnApply").onclick = applyToTableau;
   el("btnReset").onclick = () => setFromPreset(CONFIG.DEFAULT_PRESET);
 
@@ -285,10 +318,6 @@ function wireUI(){
   el("btnPrevDecade").onclick = () => { decadeStartYear = (decadeStartYear ?? Math.floor(visibleYear()/10)*10) - 10; renderYearGrid(); };
   el("btnNextDecade").onclick = () => { decadeStartYear = (decadeStartYear ?? Math.floor(visibleYear()/10)*10) + 10; renderYearGrid(); };
   el("btnCloseMonth").onclick = hidePanels;
-
-  el("boxStart").onclick = () => { setMode("editStart"); hidePanels(); };
-  el("boxEnd").onclick = () => { setMode("editEnd"); hidePanels(); };
-  el("btnBackToRange").onclick = () => { setMode("range"); hidePanels(); };
 
   document.querySelectorAll(".chip").forEach(b=>{
     b.onclick = () => setFromPreset(b.getAttribute("data-preset"));
@@ -313,14 +342,12 @@ async function init(){
 
     await findParams();
 
-    // 초기 파라미터 읽기
     const s = parseToDate(paramStart.currentValue.value);
     const e = parseToDate(paramEnd.currentValue.value);
     const norm = normalizeRange(s,e);
     startDate = norm.s;
     endDate = norm.e;
 
-    // 빈 값이면 기본 프리셋
     if (!startDate || !endDate){
       const {s:ds, e:de} = preset(CONFIG.DEFAULT_PRESET);
       setRange(ds,de,true);
@@ -331,7 +358,6 @@ async function init(){
     setStatus("준비 완료");
   }catch(err){
     console.error(err);
-    // Tableau 연결 실패해도 UI만이라도 뜨게
     const {s,e} = preset(CONFIG.DEFAULT_PRESET);
     setRange(s,e,true);
     initFlatpickr();
