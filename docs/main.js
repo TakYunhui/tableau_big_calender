@@ -91,7 +91,6 @@ function setRange(s,e, syncPicker=true){
   if (fp && syncPicker){
     if (startDate && endDate) fp.setDate([startDate, endDate], false);
     else if (startDate) fp.setDate([startDate], false);
-    fp.jumpToDate(endDate || startDate || today(), true);
   }
 }
 
@@ -104,7 +103,7 @@ async function applyToTableau(){
     await paramStart.changeValueAsync(ymd(startDate));
     await paramEnd.changeValueAsync(ymd(endDate));
     setStatus("적용 완료");
-    closePanel(); // ✅ 적용하면 닫기
+    closePanel();
   }catch(err){
     console.error(err);
     setStatus("적용 실패(파라미터/권한 확인)");
@@ -122,7 +121,6 @@ function openPanel(){
   p.classList.remove("hidden");
   p.setAttribute("aria-hidden","false");
   el("caret").textContent = "▲";
-  if (fp) fp.jumpToDate(endDate || startDate || today(), true);
 }
 function closePanel(){
   const p = el("pickerPanel");
@@ -136,21 +134,37 @@ function togglePanel(){
   if (isHidden) openPanel(); else closePanel();
 }
 
+/** ✅ locale를 코드로 등록 (파일 추가 없이 한글화) */
+function ensureKoreanLocale(){
+  if (!window.flatpickr || !window.flatpickr.l10ns) return;
+  window.flatpickr.l10ns.ko = {
+    weekdays: {
+      shorthand: ["일","월","화","수","목","금","토"],
+      longhand: ["일요일","월요일","화요일","수요일","목요일","금요일","토요일"]
+    },
+    months: {
+      shorthand: ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"],
+      longhand: ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"]
+    },
+    rangeSeparator: " ~ ",
+    firstDayOfWeek: 0,
+    time_24hr: true
+  };
+}
+
 function initFlatpickr(){
-  // ✅ 한국어 locale 적용 (flatpickr-l10n-ko.js 로드 필요)
-  const ko = (window.flatpickr && window.flatpickr.l10ns && window.flatpickr.l10ns.ko) ? window.flatpickr.l10ns.ko : "ko";
+  ensureKoreanLocale();
 
   fp = flatpickr("#calendar", {
     inline: true,
     mode: "range",
     dateFormat: "Y-m-d",
-    locale: ko,
+    locale: "ko",
     clickOpens: false,
     defaultDate: (startDate && endDate) ? [startDate, endDate] : (startDate ? [startDate] : null),
     onChange: (selected) => {
       if (!selected || selected.length===0) return;
 
-      // 개별 수정 모드
       if (mode === "editStart" || mode === "editEnd"){
         const picked = clamp(selected[0]);
         let s = startDate ? new Date(startDate) : null;
@@ -168,13 +182,13 @@ function initFlatpickr(){
         return;
       }
 
-      // range 기본
       if (selected.length === 1){
         startDate = clamp(selected[0]);
         endDate = null;
         setRange(startDate, endDate, false);
         return;
       }
+
       const norm = normalizeRange(selected[0], selected[1]);
       setRange(norm.s, norm.e, false);
     }
@@ -213,7 +227,6 @@ function wireUI(){
     if (e.key === "Enter" || e.key === " ") { e.preventDefault(); togglePanel(); }
   });
 
-  // 바깥 클릭 시 닫기 (컨테이너 내부 기준)
   document.addEventListener("click", (e)=>{
     const panel = el("pickerPanel");
     const bar = el("rangeBar");
@@ -222,7 +235,6 @@ function wireUI(){
     if (!inside) closePanel();
   });
 
-  // ESC 닫기
   document.addEventListener("keydown", (e)=> {
     if (e.key === "Escape") closePanel();
   });
@@ -242,7 +254,6 @@ async function init(){
   wireUI();
   setMode("range");
 
-  // 단독 미리보기 기본값
   const {s,e} = preset(CONFIG.DEFAULT_PRESET);
   setRange(s,e,false);
   initFlatpickr();
@@ -255,7 +266,6 @@ async function init(){
 
     await findParams();
 
-    // Tableau 값 동기화
     const ss = parseToDate(paramStart.currentValue.value);
     const ee = parseToDate(paramEnd.currentValue.value);
     const norm = normalizeRange(ss,ee);
@@ -263,8 +273,9 @@ async function init(){
 
     setStatus("준비 완료");
   }catch(err){
+    // Pages 단독 실행이면 여기로 빠지는 게 정상
     console.warn(err);
-    setStatus("Tableau 연결 실패(단독 미리보기 모드)");
+    setStatus("단독 미리보기 모드");
   }
 }
 
