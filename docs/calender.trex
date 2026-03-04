@@ -7,13 +7,11 @@
   <dashboard-extension id="com.takyunhui.bigcalendar" extension-version="1.0.0">
     <default-locale>ko_KR</default-locale>
 
-    <name resource-id="name"/>
-    <description resource-id="desc"/>
+    <name>Big Calendar Date Picker</name>
+    <description>Large date range picker for Tableau parameters.</description>
 
-    <!-- 예전에 통과한 author 속성 구성 그대로 -->
     <author name="TakYunhui"
             email="admin@example.com"
-            organization="Internal"
             website="https://takyunhui.github.io/tableau_big_calender/" />
 
     <min-api-version>1.7</min-api-version>
@@ -22,16 +20,8 @@
       <url>https://takyunhui.github.io/tableau_big_calender/</url>
     </source-location>
 
+    <!-- icon 필수라고 뜨니까 무조건 넣음 (1x1 PNG base64) -->
     <icon>iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMBAp+X2ZsAAAAASUVORK5CYII=</icon>
+
   </dashboard-extension>
-
-  <resources>
-    <resource id="name">
-      <text locale="ko_KR">Big Calendar Date Picker</text>
-    </resource>
-    <resource id="desc">
-      <text locale="ko_KR">Large date range picker for Tableau parameters.</text>
-    </resource>
-  </resources>
-
 </manifest>
