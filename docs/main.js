@@ -153,15 +153,60 @@ function ensureKoreanLocale(){
 }
 
 function initFlatpickr(){
-  ensureKoreanLocale();
+  // ✅ locale 객체를 직접 전달 (문자열 "ko" 사용 금지)
+  const KO = {
+    weekdays: {
+      shorthand: ["일","월","화","수","목","금","토"],
+      longhand: ["일요일","월요일","화요일","수요일","목요일","금요일","토요일"]
+    },
+    months: {
+      shorthand: ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"],
+      longhand: ["1월","2월","3월","4월","5월","6월","7월","8월","9월","10월","11월","12월"]
+    },
+    rangeSeparator: " ~ ",
+    firstDayOfWeek: 0,
+    time_24hr: true,
+    ordinal: () => "일",
+    weekAbbreviation: "주",
+    scrollTitle: "스크롤하여 증가",
+    toggleTitle: "클릭하여 전환"
+  };
 
   fp = flatpickr("#calendar", {
     inline: true,
     mode: "range",
     dateFormat: "Y-m-d",
-    locale: "ko",
+    locale: KO,          // ✅ 여기!
     clickOpens: false,
     defaultDate: (startDate && endDate) ? [startDate, endDate] : (startDate ? [startDate] : null),
+    onReady: () => {
+      // ✅ 헤더를 "YYYY년 M월"로 강제 (미국식 텍스트 방지)
+      try {
+        const wrap = fp.calendarContainer;
+        const cur = wrap.querySelector(".flatpickr-current-month");
+        const m = fp.currentMonth + 1;
+        const y = fp.currentYear;
+        if (cur) cur.firstChild.textContent = `${y}년 ${m}월 `;
+      } catch(e) {}
+    },
+    onMonthChange: () => {
+      try {
+        const wrap = fp.calendarContainer;
+        const cur = wrap.querySelector(".flatpickr-current-month");
+        const m = fp.currentMonth + 1;
+        const y = fp.currentYear;
+        if (cur) cur.firstChild.textContent = `${y}년 ${m}월 `;
+      } catch(e) {}
+    },
+    onYearChange: () => {
+      try {
+        const wrap = fp.calendarContainer;
+        const cur = wrap.querySelector(".flatpickr-current-month");
+        const m = fp.currentMonth + 1;
+        const y = fp.currentYear;
+        if (cur) cur.firstChild.textContent = `${y}년 ${m}월 `;
+      } catch(e) {}
+    },
     onChange: (selected) => {
       if (!selected || selected.length===0) return;
 
