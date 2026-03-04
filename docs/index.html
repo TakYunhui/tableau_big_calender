@@ -1,75 +1,400 @@
+<!-- index.html (전체 코드 버전) -->
 <!doctype html>
 <html lang="ko">
 <head>
   <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Big Calendar Date Picker</title>
+  <meta name="viewport" content="width=device-width,initial-scale=1" />
+  <title>Tableau Date Picker (480x200)</title>
 
-  <script src="./lib/tableau.extensions.1.latest.min.js"></script>
+  <!-- flatpickr -->
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css" />
 
-  <link rel="stylesheet" href="./lib/flatpickr.min.css" />
-  <script src="./lib/flatpickr.min.js"></script>
+  <style>
+    /* =========================
+       0) iframe/바디 배경: 완전 투명
+       ========================= */
+    html, body {
+      margin: 0;
+      padding: 0;
+      background: transparent !important;
+      overflow: hidden; /* 480x200 안에서 스크롤 안 생기게 */
+      font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR", "Apple SD Gothic Neo", Arial, sans-serif;
+    }
 
-  <link rel="stylesheet" href="./styles.css" />
+    /* =========================
+       1) 480x200 고정 컨테이너
+       ========================= */
+    #app {
+      width: 480px;
+      height: 200px;
+      box-sizing: border-box;
+      background: transparent; /* 뒤 배경 투명 */
+      display: flex;
+      flex-direction: column;
+    }
+
+    /* =========================
+       2) 상단 바(요약/편집 공용)
+       ========================= */
+    .topbar {
+      height: 36px;
+      display: flex;
+      align-items: center;
+      justify-content: space-between;
+      padding: 6px 10px;
+      box-sizing: border-box;
+      gap: 8px;
+    }
+
+    .rangeText {
+      font-size: 12px;
+      line-height: 1.2;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      max-width: 330px;
+    }
+
+    .btnRow {
+      display: flex;
+      gap: 6px;
+      flex: 0 0 auto;
+    }
+
+    button {
+      height: 24px;
+      padding: 0 10px;
+      border: 1px solid rgba(0,0,0,0.18);
+      border-radius: 8px;
+      background: rgba(255,255,255,0.85);
+      font-size: 12px;
+      cursor: pointer;
+      user-select: none;
+    }
+    button:active { transform: translateY(0.5px); }
+    button.primary {
+      border-color: rgba(0,0,0,0.25);
+      background: rgba(255,255,255,0.95);
+      font-weight: 600;
+    }
+    button.ghost {
+      background: rgba(255,255,255,0.0);
+      border-color: rgba(0,0,0,0.18);
+    }
+
+    /* =========================
+       3) 편집 영역 (달력 + 우측 정보)
+       ========================= */
+    .editorArea {
+      flex: 1;
+      display: flex;
+      gap: 8px;
+      padding: 6px 10px;
+      box-sizing: border-box;
+      overflow: hidden; /* 핵심: 내부가 튀어나와도 iframe 밖으로 안 나가게 */
+    }
+
+    .calWrap {
+      flex: 0 0 330px; /* 달력 자리 */
+      overflow: hidden;
+      display: flex;
+      align-items: flex-start;
+    }
+
+    /* flatpickr 달력 크기 축소해서 480x200에서 안 짤리게 */
+    .calWrap .flatpickr-calendar {
+      transform: scale(0.88);
+      transform-origin: top left;
+    }
+
+    .side {
+      flex: 1;
+      min-width: 120px;
+      display: flex;
+      flex-direction: column;
+      justify-content: space-between;
+      gap: 8px;
+    }
+
+    .kv {
+      display: grid;
+      grid-template-columns: 44px 1fr;
+      row-gap: 6px;
+      column-gap: 6px;
+      font-size: 12px;
+      align-content: start;
+    }
+    .kv .k {
+      opacity: 0.7;
+    }
+    .kv .v {
+      font-weight: 600;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+
+    .hint {
+      font-size: 11px;
+      opacity: 0.65;
+      line-height: 1.2;
+    }
+
+    /* =========================
+       4) 모드 전환
+       - summary: 조회기간만 보임
+       - edit: 달력 편집 화면
+       ========================= */
+    .mode-summary .editorArea { display: none; }
+    .mode-edit .rangeText { display: none; } /* "달력 열렸을 때 조회기간 잠시 감춤" */
+    .mode-edit #btnEdit { display: none; }   /* 편집 중엔 '변경' 숨김 */
+    .mode-summary #btnApply,
+    .mode-summary #btnClose { display: none; } /* 요약 모드엔 적용/닫기 숨김 */
+
+    /* =========================
+       5) 상태 텍스트
+       ========================= */
+    .status {
+      font-size: 11px;
+      opacity: 0.75;
+      padding: 0 10px 6px;
+      box-sizing: border-box;
+      white-space: nowrap;
+      overflow: hidden;
+      text-overflow: ellipsis;
+    }
+  </style>
 </head>
 
 <body>
-  <div class="app">
-    <div class="rangeBar" id="rangeBar" role="button" tabindex="0" aria-label="기간 선택 열기">
-      <div class="rangeLeft">
-        <div class="rangeTitle">조회 기간</div>
-        <div class="rangeValue">
-          <span id="txtStart">-</span>
-          <span class="rangeSep">~</span>
-          <span id="txtEnd">-</span>
-        </div>
-      </div>
-      <div class="rangeRight">
-        <span class="caret" id="caret">▼</span>
+  <div id="app" class="mode-summary">
+    <!-- 상단바 -->
+    <div class="topbar">
+      <div class="rangeText" id="rangeText">-</div>
+      <div class="btnRow">
+        <button id="btnEdit" class="primary">변경</button>
+        <button id="btnClose" class="ghost">닫기</button>
+        <button id="btnApply" class="primary">적용</button>
       </div>
     </div>
 
-    <div class="panel hidden" id="pickerPanel" aria-hidden="true">
-      <div class="panelTop">
-        <div class="modeHint" id="modeHint">범위 선택</div>
-        <div class="actions">
-          <button id="btnApply" class="btn primary" type="button">적용</button>
-          <button id="btnReset" class="btn" type="button">초기화</button>
+    <!-- 편집 영역 -->
+    <div class="editorArea">
+      <div class="calWrap">
+        <input id="fp" aria-label="date-picker" />
+      </div>
+
+      <div class="side">
+        <div>
+          <div class="kv">
+            <div class="k">시작일</div><div class="v" id="startText">-</div>
+            <div class="k">종료일</div><div class="v" id="endText">-</div>
+          </div>
+          <div class="hint" id="hintText">기간 선택 후 “적용”을 누르면 대시보드가 갱신됩니다.</div>
         </div>
       </div>
-
-      <div class="seRow">
-        <button id="boxStart" class="seBox" type="button">
-          <div class="seLabel">시작일</div>
-          <div id="txtStartBox" class="seValue">-</div>
-        </button>
-
-        <button id="boxEnd" class="seBox" type="button">
-          <div class="seLabel">종료일</div>
-          <div id="txtEndBox" class="seValue">-</div>
-        </button>
-      </div>
-
-      <div class="calendarWrap">
-        <!-- ✅ div 말고 input으로 (flatpickr 안정화 핵심) -->
-        <input id="calendar" type="text" class="calendarInput" />
-      </div>
-
-      <div class="quickRow">
-        <button class="chip" data-preset="today" type="button">오늘</button>
-        <button class="chip" data-preset="last7" type="button">최근 7일</button>
-        <button class="chip" data-preset="last30" type="button">최근 30일</button>
-        <button class="chip" data-preset="thisMonth" type="button">이번달</button>
-        <button class="chip" data-preset="last3m" type="button">최근 3개월</button>
-        <button class="chip" data-preset="ytd" type="button">YTD</button>
-      </div>
-
-      <div class="statusRow">
-        <div id="status" class="status">Tableau 연결 중…</div>
-      </div>
     </div>
+
+    <div class="status" id="statusText"></div>
   </div>
 
-  <script src="./main.js"></script>
+  <!-- Tableau Extensions API -->
+  <script src="https://cdn.jsdelivr.net/npm/tableau-api@1.12.2/dist/tableau.extensions.1.latest.min.js"></script>
+
+  <!-- flatpickr -->
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
+  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
+
+  <script>
+    /*****************************************************************
+     * 설정(필요하면 여기만 바꿔서 운영)
+     * - start/end 파라미터명은 대시보드마다 다르니, 일단 기본값 제공
+     * - 나중에 너가 말한 "대시보드별 매핑" 붙일 때도 이 구조 그대로 확장하면 됨
+     *****************************************************************/
+    const DEFAULT_CONFIG = {
+      mode: "range",               // "range" | "single"
+      paramStartName: "조회시작일", // Tableau Parameter name
+      paramEndName: "조회종료일",   // Tableau Parameter name (single이면 start만 씀)
+      dateFormat: "Y-m-d"          // flatpickr + 표시용
+    };
+
+    /*****************************************************************
+     * 유틸
+     *****************************************************************/
+    function pad2(n){ return String(n).padStart(2, "0"); }
+    function fmtDate(d){
+      if(!d) return "-";
+      return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
+    }
+    function setStatus(msg){
+      document.getElementById("statusText").textContent = msg || "";
+    }
+
+    /*****************************************************************
+     * 상태
+     *****************************************************************/
+    let fp = null;
+    let cfg = { ...DEFAULT_CONFIG };
+
+    let startDate = null;
+    let endDate = null;
+
+    /*****************************************************************
+     * UI 업데이트
+     *****************************************************************/
+    function renderSummary(){
+      const rangeText = document.getElementById("rangeText");
+      if (cfg.mode === "single") {
+        rangeText.textContent = startDate ? fmtDate(startDate) : "-";
+      } else {
+        const s = startDate ? fmtDate(startDate) : "-";
+        const e = endDate ? fmtDate(endDate) : "-";
+        rangeText.textContent = `${s} ~ ${e}`;
+      }
+    }
+
+    function renderSide(){
+      document.getElementById("startText").textContent = fmtDate(startDate);
+      document.getElementById("endText").textContent = (cfg.mode === "single") ? "-" : fmtDate(endDate);
+    }
+
+    function openEditor(){
+      const app = document.getElementById("app");
+      app.classList.remove("mode-summary");
+      app.classList.add("mode-edit");
+      setStatus("");
+    }
+
+    function closeEditor(){
+      const app = document.getElementById("app");
+      app.classList.remove("mode-edit");
+      app.classList.add("mode-summary");
+      renderSummary(); // 닫힐 때 다시 조회기간 보여주기
+    }
+
+    /*****************************************************************
+     * Tableau 파라미터 적용
+     *****************************************************************/
+    async function applyToTableau(){
+      // Tableau 확장 초기화가 안 된 환경(로컬 미리보기 등)에서도 UI는 동작하게
+      if (!window.tableau || !tableau.extensions || !tableau.extensions.dashboardContent) {
+        setStatus("Tableau 연결 없음(로컬 테스트)");
+        return;
+      }
+
+      const dashboard = tableau.extensions.dashboardContent.dashboard;
+      const params = await dashboard.getParametersAsync();
+
+      const findParam = (name) => params.find(p => p.name === name);
+
+      const pStart = findParam(cfg.paramStartName);
+      const pEnd   = (cfg.mode === "single") ? null : findParam(cfg.paramEndName);
+
+      if (!pStart) throw new Error(`시작 파라미터를 찾을 수 없음: ${cfg.paramStartName}`);
+      if (cfg.mode !== "single" && !pEnd) throw new Error(`종료 파라미터를 찾을 수 없음: ${cfg.paramEndName}`);
+
+      if (!startDate) throw new Error("시작일이 선택되지 않았습니다.");
+      if (cfg.mode !== "single" && !endDate) throw new Error("종료일이 선택되지 않았습니다.");
+
+      // Tableau 파라미터 타입에 맞춰 string로 set (대부분 날짜 파라미터는 "YYYY-MM-DD"도 잘 받음)
+      await pStart.changeValueAsync(fmtDate(startDate));
+      if (cfg.mode !== "single") {
+        await pEnd.changeValueAsync(fmtDate(endDate));
+      }
+    }
+
+    /*****************************************************************
+     * flatpickr 세팅
+     *****************************************************************/
+    function initFlatpickr(){
+      const el = document.getElementById("fp");
+
+      // locale ko가 CDN에서 로드되면 flatpickr.l10ns.ko가 존재
+      const ko = (window.flatpickr && flatpickr.l10ns && flatpickr.l10ns.ko) ? flatpickr.l10ns.ko : undefined;
+
+      fp = flatpickr(el, {
+        mode: (cfg.mode === "single") ? "single" : "range",
+        inline: true,
+        showMonths: 1,
+        dateFormat: cfg.dateFormat,
+        locale: ko,
+        // defaultDate는 start/end가 있을 때 반영
+        defaultDate: (cfg.mode === "single")
+          ? (startDate ? [startDate] : null)
+          : ((startDate && endDate) ? [startDate, endDate] : null),
+        onChange: (selectedDates) => {
+          if (cfg.mode === "single") {
+            startDate = selectedDates[0] || null;
+            endDate = null;
+          } else {
+            startDate = selectedDates[0] || null;
+            endDate   = selectedDates[1] || null;
+          }
+          renderSide();
+        }
+      });
+    }
+
+    /*****************************************************************
+     * 이벤트 바인딩
+     *****************************************************************/
+    function bindEvents(){
+      document.getElementById("btnEdit").addEventListener("click", () => {
+        openEditor();
+      });
+
+      // 닫기: 적용 없이 요약으로 복귀
+      document.getElementById("btnClose").addEventListener("click", () => {
+        closeEditor();
+        setStatus("");
+      });
+
+      // 적용: 파라미터 반영 후 자동 닫기(요약으로 복귀)
+      document.getElementById("btnApply").addEventListener("click", async () => {
+        try {
+          setStatus("적용 중...");
+          await applyToTableau();
+          closeEditor();            // ✅ “적용 완료되고 닫힐 때 다시 보여”
+          setStatus("적용 완료");
+        } catch (e) {
+          setStatus(String(e?.message || e));
+        }
+      });
+    }
+
+    /*****************************************************************
+     * 시작
+     *****************************************************************/
+    async function bootstrap(){
+      bindEvents();
+
+      // 기본 날짜(처음 로딩 시): 오늘 단일 or 오늘~오늘
+      const today = new Date();
+      startDate = today;
+      endDate = (cfg.mode === "single") ? null : today;
+
+      renderSummary();
+      renderSide();
+
+      initFlatpickr();
+
+      // Tableau 초기화(가능할 때만)
+      try {
+        if (window.tableau && tableau.extensions) {
+          await tableau.extensions.initializeAsync();
+
+          // 여기서 settings로 cfg를 읽어오고 싶으면 이 블록 안에 추가하면 됨
+          // 예) cfg.paramStartName = tableau.extensions.settings.get("paramStartName") || cfg.paramStartName;
+
+          setStatus("");
+        }
+      } catch (e) {
+        // Tableau 밖에서도 UI는 쓰게 두고 상태만 표시
+        setStatus("Tableau 초기화 실패(로컬 테스트일 수 있음)");
+      }
+    }
+
+    bootstrap();
+  </script>
 </body>
 </html>
