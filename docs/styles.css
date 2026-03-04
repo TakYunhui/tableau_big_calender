@@ -19,7 +19,6 @@ body{
 }
 .app{padding:10px;max-width:100%}
 
-/* 상단 기간바 */
 .rangeBar{
   display:flex;align-items:center;justify-content:space-between;gap:10px;
   background:var(--card);
@@ -36,7 +35,6 @@ body{
 .rangeSep{margin:0 6px;color:rgba(17,24,39,.35)}
 .caret{opacity:.8;font-size:12px}
 
-/* 펼침 패널 */
 .panel{
   margin-top:10px;
   background:var(--card);
@@ -54,7 +52,6 @@ body{
 .modeHint{font-size:12px;color:rgba(17,24,39,.7)}
 .actions{display:flex;align-items:center;gap:8px;flex-wrap:wrap}
 
-/* 버튼 */
 .btn{
   border:1px solid var(--line);
   background:#fff;
@@ -72,7 +69,6 @@ body{
   font-weight:700;
 }
 
-/* 시작/종료 박스 */
 .seRow{display:grid;grid-template-columns:1fr 1fr;gap:10px;margin-bottom:10px}
 .seBox{
   border:1px solid var(--line);
@@ -88,7 +84,6 @@ body{
 .seLabel{color:var(--muted);font-size:12px}
 .seValue{font-size:14px;font-weight:800}
 
-/* 달력 */
 .calendarWrap{
   border:1px solid var(--line);
   background:#fff;
@@ -96,29 +91,30 @@ body{
   padding:8px;
 }
 
-/* flatpickr 크기/가독성 */
+/* ✅ input은 숨기고(달력만 보여주기) */
+.calendarInput{
+  width:1px;height:1px;opacity:0;position:absolute;pointer-events:none;
+}
+
+/* flatpickr 전체 폭 */
 .flatpickr-calendar.inline{width:100%!important; box-shadow:none!important; border:0!important}
 .flatpickr-rContainer{width:100%!important}
 .flatpickr-days,.dayContainer{width:100%!important;min-width:100%!important}
 
-/* ✅ 날짜 셀 기본은 둥글지 않게 (range 연결감) */
+/* ✅ range 연결감(중간은 직사각형) */
 .flatpickr-day{
   height:34px!important;
   line-height:34px!important;
   max-width:none!important;
   border-radius:0!important;
   margin:0!important;
-  font-size:12px!important;
+  font-size:12px!important
 }
-
-/* ✅ range 중간은 직사각형으로 이어지게 */
 .flatpickr-day.inRange{
   background:rgba(37,99,235,.12)!important;
   border-color:transparent!important;
   box-shadow:none!important;
 }
-
-/* ✅ 시작/끝만 둥글게 */
 .flatpickr-day.startRange{
   border-top-left-radius:10px!important;
   border-bottom-left-radius:10px!important;
@@ -131,30 +127,17 @@ body{
   background:rgba(37,99,235,.22)!important;
   border-color:rgba(37,99,235,.35)!important;
 }
-
-/* 선택 단일일도 둥글게 */
 .flatpickr-day.selected{
   border-radius:10px!important;
   background:rgba(37,99,235,.22)!important;
   border-color:rgba(37,99,235,.35)!important;
 }
 
-/* 헤더(월 표시) 한국 스타일 가독성 */
-.flatpickr-current-month{
-  font-size:14px!important;
-  font-weight:800!important;
-}
-.flatpickr-current-month .cur-year{
-  font-weight:800!important;
-}
+/* 헤더 가독성 */
+.flatpickr-current-month{font-size:14px!important;font-weight:800!important}
+.flatpickr-current-month .cur-year{font-weight:800!important}
+.flatpickr-weekday{color:rgba(17,24,39,.7)!important;font-weight:700!important}
 
-/* 요일 한글이 잘 보이게 */
-.flatpickr-weekday{
-  color:rgba(17,24,39,.7)!important;
-  font-weight:700!important;
-}
-
-/* 퀵 버튼 */
 .quickRow{display:flex;flex-wrap:wrap;gap:8px;margin-top:10px}
 .chip{
   border:1px solid var(--line);
@@ -167,6 +150,5 @@ body{
 }
 .chip:hover{border-color:rgba(17,24,39,.22)}
 
-/* 상태 */
 .statusRow{margin-top:10px}
 .status{color:var(--muted);font-size:12px}
