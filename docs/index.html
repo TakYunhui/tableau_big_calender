@@ -5,16 +5,10 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Big Calendar Date Picker</title>
 
-  <meta http-equiv="Cache-Control" content="no-cache, no-store, must-revalidate" />
-  <meta http-equiv="Pragma" content="no-cache" />
-  <meta http-equiv="Expires" content="0" />
-
   <script src="./lib/tableau.extensions.1.latest.min.js"></script>
 
   <link rel="stylesheet" href="./lib/flatpickr.min.css" />
   <script src="./lib/flatpickr.min.js"></script>
-  <!-- ✅ 한국어 로케일 추가 -->
-  <script src="./lib/flatpickr-l10n-ko.js"></script>
 
   <link rel="stylesheet" href="./styles.css" />
 </head>
@@ -57,7 +51,8 @@
       </div>
 
       <div class="calendarWrap">
-        <div id="calendar"></div>
+        <!-- ✅ div 말고 input으로 (flatpickr 안정화 핵심) -->
+        <input id="calendar" type="text" class="calendarInput" />
       </div>
 
       <div class="quickRow">
