@@ -1,10 +1,10 @@
 /* global tableau, flatpickr */
 
 const SETTINGS_KEYS = {
-  kind: "date_kind",              // "range" | "single"
+  kind: "date_kind",
   startParam: "date_start_param",
   endParam: "date_end_param",
-  format: "date_format",          // flatpickr format
+  format: "date_format",
 };
 
 const DEFAULTS = {
@@ -14,9 +14,7 @@ const DEFAULTS = {
 
 let fp = null;
 
-function qs(id) {
-  return document.getElementById(id);
-}
+function qs(id) { return document.getElementById(id); }
 
 function setHint(msg) {
   const el = qs("hint");
@@ -64,11 +62,22 @@ function setValueTexts(start, end) {
   if (endEl) endEl.textContent = end ? toISODateOnly(end) : "-";
 }
 
-function destroyFP() {
-  if (fp) {
-    fp.destroy();
-    fp = null;
+function setMappingTexts(settings) {
+  const sEl = qs("startParamName");
+  const eEl = qs("endParamName");
+
+  if (sEl) sEl.textContent = settings.startParam ? settings.startParam : "(미설정)";
+  if (eEl) {
+    if (settings.kind === "single") {
+      eEl.textContent = settings.endParam ? settings.endParam : "(단일)";
+    } else {
+      eEl.textContent = settings.endParam ? settings.endParam : "(미설정)";
+    }
   }
+}
+
+function destroyFP() {
+  if (fp) { fp.destroy(); fp = null; }
 }
 
 function ensureFlatpickrLoaded() {
@@ -79,23 +88,12 @@ function ensureFlatpickrLoaded() {
   return true;
 }
 
-function setMappingTexts(settings) {
-  const sEl = qs("startParamName");
-  const eEl = qs("endParamName");
-
-  if (sEl) sEl.textContent = settings.startParam ? settings.startParam : "(미설정)";
-  if (eEl) {
-    // single이면 종료 파라미터는 비워둘 수 있으니 표시 처리
-    if (settings.kind === "single") {
-      eEl.textContent = settings.endParam ? settings.endParam : "(단일)";
-    } else {
-      eEl.textContent = settings.endParam ? settings.endParam : "(미설정)";
-    }
-  }
-}
-
 function openCalendar() {
-  if (fp) fp.open();
+  if (!fp) {
+    setHint("달력 인스턴스가 없습니다. (fp=null) main.js 오류/중단 여부 확인");
+    return;
+  }
+  fp.open();
 }
 
 async function applyDatesToParameters(settings, start, end) {
@@ -143,10 +141,8 @@ function initFlatpickr(settings) {
       const start = selectedDates[0] || null;
       const end = settings.kind === "single" ? start : (selectedDates[1] || null);
 
-      // 표시 텍스트 즉시 업데이트
       setValueTexts(start, end);
 
-      // range는 종료 선택 전엔 적용하지 않음
       if (settings.kind === "range" && !end) return;
 
       try {
@@ -164,7 +160,6 @@ async function openConfigDialog() {
   try {
     await tableau.extensions.ui.displayDialogAsync(url, "", { height: 420, width: 520 });
   } catch (e) {
-    // 닫힘도 정상
     console.warn("Config dialog closed or failed:", e);
   }
 }
@@ -174,17 +169,15 @@ function bindClickHandlers() {
   const settingsBtn = qs("settingsBtn");
 
   if (!bar) {
-    setHint("rangeBar를 찾을 수 없습니다. index.html id 확인 필요.");
+    setHint("rangeBar를 찾을 수 없습니다. index.html 구조가 깨졌습니다.");
     return;
   }
 
-  // 바 클릭 -> 달력
   bar.onclick = (e) => {
     if (e.target && e.target.id === "settingsBtn") return;
     openCalendar();
   };
 
-  // 설정 버튼
   if (settingsBtn) {
     settingsBtn.onclick = async (e) => {
       e.stopPropagation();
@@ -197,17 +190,12 @@ function bindClickHandlers() {
 async function render() {
   const settings = loadSettings();
 
-  // 설정 버튼: authoring에서만
   const settingsBtn = qs("settingsBtn");
   if (settingsBtn) settingsBtn.style.display = isAuthoringMode() ? "inline-flex" : "none";
 
-  // ✅ 여기 추가: 매핑된 파라미터명 표시
   setMappingTexts(settings);
-
-  // 초기 값 표시(아직 선택 안 했으면 '-')
   setValueTexts(null, null);
 
-  // 설정 미완료 힌트
   if (!settings.startParam || (settings.kind === "range" && !settings.endParam)) {
     setHint(isAuthoringMode() ? "⚙ 설정에서 파라미터를 매핑하세요." : "조회기간 설정이 아직 완료되지 않았습니다.");
   } else {
@@ -221,9 +209,10 @@ async function render() {
 async function init() {
   await tableau.extensions.initializeAsync();
 
-  tableau.extensions.settings.addEventListener(tableau.TableauEventType.SettingsChanged, async () => {
-    await render();
-  });
+  tableau.extensions.settings.addEventListener(
+    tableau.TableauEventType.SettingsChanged,
+    async () => { await render(); }
+  );
 
   await render();
 }
