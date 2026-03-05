@@ -1,13 +1,19 @@
 /* =========================
-   0) 배경 투명 + 스크롤 차단
+   0) 레이아웃 고정 (중요)
+   - "빨간 테두리가 세로줄" 문제 해결
    ========================= */
 html, body {
+  width: 100% !important;
+  height: 100% !important;
   margin: 0;
   padding: 0;
-  background: transparent !important;
   overflow: hidden;
+  background: transparent !important;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR",
                "Apple SD Gothic Neo", Arial, sans-serif;
+}
+body {
+  display: flex;
 }
 
 /* =========================
@@ -16,10 +22,14 @@ html, body {
 #app {
   width: 480px;
   height: 200px;
+  flex: 0 0 480px; /* 가로 줄어듦 방지 */
   box-sizing: border-box;
   background: transparent !important;
   display: flex;
   flex-direction: column;
+
+  /* ✅ 디버그용. 확인 끝나면 지워 */
+  outline: 3px solid red !important;
 }
 
 /* =========================
@@ -86,16 +96,19 @@ html, body {
   flex: 1;
   padding: 6px 10px;
   box-sizing: border-box;
-  background: transparent; /* 여기 딤 넣고싶으면 rgba(0,0,0,0.03) 정도 */
+  background: transparent;
   overflow: hidden;
-  display: none; /* 기본 숨김 (summary) */
+  display: none; /* summary에서는 숨김 */
 }
 
 .calBox{
   width: 100%;
   height: 100%;
   border-radius: 12px;
-  background: rgba(255,255,255,0.92); /* ✅ 박스만 배경 */
+
+  /* ✅ 박스만 배경 (원하면 여기 색 바꿔) */
+  background: rgba(255,255,255,0.92);
+
   border: 1px solid rgba(0,0,0,0.12);
   box-sizing: border-box;
   overflow: hidden;
@@ -103,7 +116,6 @@ html, body {
 
 /* =========================
    5) Editor Area (calBox 안)
-   - 남은 영역 전체 사용
    ========================= */
 .editorArea {
   height: 100%;
@@ -123,7 +135,7 @@ html, body {
   position: relative;
 }
 
-/* inline 캘린더는 input 숨김 */
+/* inline 캘린더 input 숨김 */
 .fpInput {
   position: absolute;
   opacity: 0;
@@ -133,11 +145,14 @@ html, body {
 }
 
 /* =========================
-   6) flatpickr 흰 배경 제거 (가장 중요)
-   - 달력 “흰 판” 느낌을 없애고
-   - 배경은 calBox만 담당하게 함
+   6) flatpickr 흰 배경 제거(최우선)
+   - flatpickr.min.css 내부에서 background:#fff가 같은 블록에 2번 선언돼도
+     !important가 최종 승리하게 만든다.
    ========================= */
 .flatpickr-calendar,
+.flatpickr-calendar.open,
+.flatpickr-calendar.inline,
+.flatpickr-calendar.static,
 .flatpickr-months,
 .flatpickr-weekdays,
 .flatpickr-weekdaycontainer,
@@ -148,10 +163,17 @@ html, body {
   box-shadow: none !important;
 }
 
+/* 테두리 제거 */
 .flatpickr-calendar {
   border: 0 !important;
   margin: 0 !important;
 }
+
+/* 화살표(삼각형) 흰색 제거 */
+.flatpickr-calendar.arrowTop:after { border-bottom-color: transparent !important; }
+.flatpickr-calendar.arrowBottom:after { border-top-color: transparent !important; }
+.flatpickr-calendar.arrowTop:before { border-bottom-color: transparent !important; }
+.flatpickr-calendar.arrowBottom:before { border-top-color: transparent !important; }
 
 /* ✅ 잘림 대응: scale */
 .calWrap .flatpickr-calendar {
@@ -203,8 +225,6 @@ html, body {
 
 /* =========================
    8) filler (눈속임)
-   - summary 모드에서 남는 영역은 투명으로 둔다
-   - edit 모드에서는 모달이 보이므로 filler 숨김
    ========================= */
 .filler{
   flex: 1;
@@ -214,21 +234,13 @@ html, body {
 
 /* =========================
    9) 모드 전환
-   - summary: 모달 숨김
-   - edit: 모달 표시 + rangeText 숨김
    ========================= */
 .mode-summary .calModal { display: none; }
 .mode-edit .calModal { display: block; }
 
 .mode-edit .rangeText { display: none; }
-
-/* edit 모드: filler 숨김 (모달이 공간 차지) */
 .mode-edit .filler { display: none; }
 
-/* 버튼 노출 */
 .mode-edit #btnEdit { display: none; }
 .mode-summary #btnApply,
 .mode-summary #btnClose { display: none; }
-
-/* styles.css가 진짜 적용되는지 테스트 */
-#app { outline: 3px solid red !important; }
