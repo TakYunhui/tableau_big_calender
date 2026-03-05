@@ -1,98 +1,74 @@
-:root {
-  --pad: 10px;
-  --radius: 10px;
-  --border: rgba(0, 0, 0, 0.12);
-  --text: #111;
-  --muted: rgba(0, 0, 0, 0.55);
-  --bg: transparent;
-  --btn: rgba(0, 0, 0, 0.06);
-}
-
-* { box-sizing: border-box; }
 html, body {
   margin: 0;
   padding: 0;
-  background: var(--bg);
+  background: transparent; /* 투명 배경 유지 */
   font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", sans-serif;
-  color: var(--text);
 }
 
-.root {
-  width: 100%;
-  height: 100%;
-  padding: var(--pad);
-}
-
-.topbar {
+/* 480x60 바 */
+.rangeBar {
+  width: 480px;
+  height: 60px;
   display: flex;
   align-items: center;
-  justify-content: space-between;
-  margin-bottom: 8px;
-}
-
-.title {
-  font-size: 14px;
-  font-weight: 700;
-}
-
-.iconBtn {
-  display: none; /* 기본 숨김 -> JS에서 authoring일 때만 block */
-  border: 1px solid var(--border);
-  background: transparent;
-  border-radius: 8px;
-  height: 28px;
-  width: 32px;
+  gap: 10px;
+  padding: 8px 10px;
+  border-radius: 10px;
+  background: transparent; /* 투명 */
   cursor: pointer;
+  position: relative;
+}
+
+/* 글자 크게(10pt 이상) */
+.rangeCol .k {
+  font-size: 12px;
+  font-weight: 700;
+  color: rgba(0,0,0,0.65);
+  line-height: 1.1;
+}
+
+.rangeCol .v {
+  font-size: 13px;
+  font-weight: 800;
+  color: rgba(0,0,0,0.92);
+  margin-top: 4px;
+  line-height: 1.1;
+}
+
+/* 가운데 구분 */
+.divider {
+  width: 1px;
+  height: 40px;
+  background: rgba(0,0,0,0.12);
+}
+
+/* 설정 버튼: authoring에서만 보이게 JS로 토글 */
+.settingsBtn {
+  position: absolute;
+  right: 8px;
+  top: 8px;
+  height: 24px;
+  width: 28px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,0.18);
+  background: rgba(255,255,255,0.75);
+  cursor: pointer;
+  display: none;
   line-height: 1;
 }
 
-.row {
-  display: grid;
-  grid-template-columns: 56px 1fr;
-  gap: 8px;
-  align-items: center;
-  margin-bottom: 8px;
+/* flatpickr 실제 input은 숨김 */
+.fpHidden {
+  position: absolute;
+  left: -9999px;
+  top: -9999px;
+  opacity: 0;
 }
 
-.label {
-  font-size: 12px;
-  color: var(--muted);
-}
-
-.input {
-  height: 34px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  padding: 0 10px;
-  outline: none;
-  background: rgba(255, 255, 255, 0.9);
-}
-
-.actions {
-  display: flex;
-  gap: 8px;
-  justify-content: flex-end;
-  margin-top: 8px;
-}
-
-.btn {
-  height: 34px;
-  padding: 0 12px;
-  border-radius: var(--radius);
-  border: 1px solid var(--border);
-  background: var(--btn);
-  cursor: pointer;
-}
-
-.btn.primary {
-  background: rgba(0, 0, 0, 0.85);
-  color: white;
-  border-color: rgba(0, 0, 0, 0.85);
-}
-
+/* 상태/에러 안내 */
 .hint {
   margin-top: 6px;
-  font-size: 11px;
-  color: var(--muted);
-  min-height: 14px;
+  font-size: 12px;
+  color: rgba(0,0,0,0.65);
+  min-height: 16px;
 }
