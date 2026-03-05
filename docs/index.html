@@ -5,15 +5,11 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>Date UI</title>
 
-  <!-- flatpickr css -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"/>
-
-  <!-- 내 CSS -->
-  <link rel="stylesheet" href="./styles.css?v=20260305_5" />
+  <link rel="stylesheet" href="./styles.css?v=20260305_6" />
 </head>
 <body>
   <div id="app" class="mode-summary">
-    <!-- Topbar -->
     <div class="topbar">
       <div class="rangeText" id="rangeText">조회기간: -</div>
 
@@ -28,7 +24,7 @@
 
     <div class="status" id="status"> </div>
 
-    <!-- ✅ 설정 모달 (드롭다운으로 파라미터 매핑) -->
+    <!-- 설정 모달 -->
     <div class="cfgModal" id="cfgModal">
       <div class="cfgBox">
         <div class="cfgHeader">
@@ -52,10 +48,7 @@
             <label for="chkSingle">단일 날짜(시작=종료)로 사용</label>
           </div>
 
-          <div class="cfgHint" id="cfgHint">
-            • 날짜/날짜시간 파라미터만 표시됩니다.<br/>
-            • 저장하면 이 대시보드에서만 매핑이 유지됩니다.
-          </div>
+          <div class="cfgHint" id="cfgHint"></div>
         </div>
 
         <div class="cfgFooter">
@@ -65,7 +58,7 @@
       </div>
     </div>
 
-    <!-- ✅ 달력 모달 -->
+    <!-- 달력 모달 -->
     <div class="calModal" id="calModal">
       <div class="calBox">
         <div class="editorArea" id="editorArea">
@@ -88,7 +81,6 @@
       </div>
     </div>
 
-    <!-- summary 모드 잔여영역 -->
     <div class="filler" aria-hidden="true"></div>
   </div>
 
@@ -96,6 +88,6 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
   <script src="https://cdn.jsdelivr.net/npm/tableau-api@1.10.0/dist/tableau.extensions.1.latest.min.js"></script>
 
-  <script src="./main.js?v=20260305_5"></script>
+  <script src="./main.js?v=20260305_6"></script>
 </body>
 </html>
