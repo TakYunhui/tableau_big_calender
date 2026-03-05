@@ -12,9 +12,7 @@ const DEFAULTS = {
   format: "Y-m-d",
 };
 
-function qs(id) {
-  return document.getElementById(id);
-}
+function qs(id) { return document.getElementById(id); }
 
 function setHint(msg) {
   const el = qs("cfgHint");
@@ -32,7 +30,6 @@ function detectType(p) {
 
 function isDateLike(p) {
   const t = detectType(p).toLowerCase();
-  // 타입을 못 읽으면 false 처리 -> "날짜/시간만 노출" 요구사항을 지키기 위해
   if (!t) return false;
   return t.includes("date"); // date/datetime
 }
@@ -72,10 +69,8 @@ async function getDashboard() {
 async function loadDateParameterItems() {
   const dash = await getDashboard();
   const params = await dash.getParametersAsync();
-
   const dateParams = params.filter(isDateLike);
 
-  // "날짜/시간만" 요구사항 고정: 0개면 사용자에게 알려줌
   return dateParams
     .map((p) => {
       const t = detectType(p);
@@ -112,15 +107,11 @@ async function init() {
   setEndRowVisible(cur.kind !== "single");
 
   if (kindSel) {
-    kindSel.onchange = () => {
-      setEndRowVisible(kindSel.value !== "single");
-    };
+    kindSel.onchange = () => setEndRowVisible(kindSel.value !== "single");
   }
 
   const cancelBtn = qs("cancelBtn");
-  if (cancelBtn) {
-    cancelBtn.onclick = () => tableau.extensions.ui.closeDialog("cancel");
-  }
+  if (cancelBtn) cancelBtn.onclick = () => tableau.extensions.ui.closeDialog("cancel");
 
   const saveBtn = qs("saveBtn");
   if (saveBtn) {
