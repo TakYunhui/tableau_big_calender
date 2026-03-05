@@ -55,75 +55,64 @@ function toISODateOnly(d) {
   return `${y}-${m}-${day}`;
 }
 
-function setValueTexts(start, end) {
+function setValueTexts(startDisplay, endDisplay) {
   const startEl = qs("startText");
   const endEl = qs("endText");
-  if (startEl) startEl.textContent = start ? toISODateOnly(start) : "-";
-  if (endEl) endEl.textContent = end ? toISODateOnly(end) : "-";
+  if (startEl) startEl.textContent = startDisplay || "-";
+  if (endEl) endEl.textContent = endDisplay || "-";
 }
 
-function setMappingTexts(settings) {
-  const sEl = qs("startParamName");
-  const eEl = qs("endParamName");
+/** 숫자를 날짜로 해석 (epoch(ms) -> serial day 추정) */
+function numberToDateDisplay(n) {
+  if (typeof n !== "number" || Number.isNaN(n)) return "";
 
-  if (sEl) sEl.textContent = settings.startParam ? settings.startParam : "(미설정)";
-  if (eEl) {
-    if (settings.kind === "single") {
-      eEl.textContent = settings.endParam ? settings.endParam : "(단일)";
-    } else {
-      eEl.textContent = settings.endParam ? settings.endParam : "(미설정)";
-    }
+  // epoch milliseconds처럼 큰 수면 ms
+  if (n > 10_000_000_000) {
+    const d = new Date(n);
+    return Number.isNaN(d.getTime()) ? String(n) : toISODateOnly(d);
   }
+
+  // serial day 추정 (0이면 1899-12-30)
+  const base = new Date(Date.UTC(1899, 11, 30));
+  const d = new Date(base.getTime() + n * 24 * 60 * 60 * 1000);
+  return Number.isNaN(d.getTime()) ? String(n) : toISODateOnly(d);
 }
 
-/** Tableau parameter currentValue -> Date 로 최대한 robust하게 변환 */
-function paramCurrentValueToDate(p) {
-  if (!p) return null;
+/** Tableau parameter currentValue -> 표시 문자열(Cloud/Desktop 공통 안정) */
+function getParamDisplay(p) {
+  if (!p || !p.currentValue) return "";
 
-  const cv = p.currentValue; // 보통 { value, formattedValue } 형태
-  if (!cv) return null;
+  const cv = p.currentValue;
 
+  // ✅ Cloud/Server에서 가장 안정적인 표시값
+  if (typeof cv.formattedValue === "string") {
+    const fv = cv.formattedValue.trim();
+    // Cloud에서 "0"으로 나오는 케이스 방어
+    if (fv !== "" && fv !== "0") return fv;
+  }
+
+  // fallback: raw value 파싱
   const raw = (cv && typeof cv === "object" && "value" in cv) ? cv.value : cv;
 
-  // 이미 Date
-  if (raw instanceof Date) return raw;
+  if (raw instanceof Date && !Number.isNaN(raw.getTime())) return toISODateOnly(raw);
 
-  // 문자열이면 Date로 파싱 시도 (예: "2026-03-01" 또는 ISO)
   if (typeof raw === "string") {
+    // 날짜 문자열 시도
     const d = new Date(raw);
-    return Number.isNaN(d.getTime()) ? null : d;
+    if (!Number.isNaN(d.getTime())) return toISODateOnly(d);
+
+    // 숫자 문자열이면 숫자 해석
+    const n = Number(raw);
+    if (!Number.isNaN(n)) return numberToDateDisplay(n);
+
+    return raw;
   }
 
-  // 숫자면 epoch로 간주
   if (typeof raw === "number") {
-    const d = new Date(raw);
-    return Number.isNaN(d.getTime()) ? null : d;
+    return numberToDateDisplay(raw);
   }
 
-  return null;
-}
-
-/** ✅ 핵심: 현재 파라미터 값 읽어서 UI에 표시 */
-async function syncUIFromCurrentParameterValues(settings) {
-  if (!settings.startParam) {
-    setValueTexts(null, null);
-    return;
-  }
-
-  const map = await getParametersMap();
-
-  const pStart = map.get(settings.startParam);
-  const start = paramCurrentValueToDate(pStart);
-
-  let end = null;
-  if (settings.kind === "single") {
-    end = start;
-  } else if (settings.endParam) {
-    const pEnd = map.get(settings.endParam);
-    end = paramCurrentValueToDate(pEnd);
-  }
-
-  setValueTexts(start, end);
+  return "";
 }
 
 function destroyFP() {
@@ -140,7 +129,7 @@ function ensureFlatpickrLoaded() {
 
 function openCalendar() {
   if (!fp) {
-    setHint("달력 인스턴스가 없습니다(fp=null). main.js 에러 여부 확인 필요.");
+    setHint("달력 인스턴스가 없습니다(fp=null). main.js 오류 여부를 확인하세요.");
     return;
   }
   fp.open();
@@ -191,10 +180,10 @@ function initFlatpickr(settings) {
       const start = selectedDates[0] || null;
       const end = settings.kind === "single" ? start : (selectedDates[1] || null);
 
-      // 표시 즉시 업데이트
-      setValueTexts(start, end);
+      // UI 즉시 업데이트
+      setValueTexts(start ? toISODateOnly(start) : "-", end ? toISODateOnly(end) : "-");
 
-      // range는 end 선택 전엔 적용 안 함
+      // range는 종료 선택 전엔 적용 안 함
       if (settings.kind === "range" && !end) return;
 
       try {
@@ -205,6 +194,24 @@ function initFlatpickr(settings) {
       }
     },
   });
+}
+
+/** 현재 파라미터 값으로 UI를 채움 */
+async function syncUIFromCurrentParameterValues(settings) {
+  const map = await getParametersMap();
+
+  const pStart = map.get(settings.startParam);
+  const startDisplay = getParamDisplay(pStart);
+
+  let endDisplay = "";
+  if (settings.kind === "single") {
+    endDisplay = startDisplay;
+  } else {
+    const pEnd = map.get(settings.endParam);
+    endDisplay = getParamDisplay(pEnd);
+  }
+
+  setValueTexts(startDisplay, endDisplay);
 }
 
 async function openConfigDialog() {
@@ -225,13 +232,11 @@ function bindClickHandlers() {
     return;
   }
 
-  // 바 클릭 -> 달력
   bar.onclick = (e) => {
     if (e.target && e.target.id === "settingsBtn") return;
     openCalendar();
   };
 
-  // 설정 버튼
   if (settingsBtn) {
     settingsBtn.onclick = async (e) => {
       e.stopPropagation();
@@ -247,15 +252,10 @@ async function render() {
   const settingsBtn = qs("settingsBtn");
   if (settingsBtn) settingsBtn.style.display = isAuthoringMode() ? "inline-flex" : "none";
 
-  setMappingTexts(settings);
-
-  // ✅ 여기서 더 이상 null로 고정 초기화하지 않음
-  // setValueTexts(null, null);
-
+  // 설정 미완료면 '-' 유지
   if (!settings.startParam || (settings.kind === "range" && !settings.endParam)) {
     setHint(isAuthoringMode() ? "⚙ 설정에서 파라미터를 매핑하세요." : "조회기간 설정이 아직 완료되지 않았습니다.");
-    // 설정이 없으면 값은 '-'
-    setValueTexts(null, null);
+    setValueTexts("", "");
   } else {
     setHint("");
   }
@@ -263,12 +263,11 @@ async function render() {
   initFlatpickr(settings);
   bindClickHandlers();
 
-  // ✅ 현재 파라미터 값을 읽어서 UI에 채움
+  // ✅ Cloud에서도 표시되도록 currentValue를 다시 읽어 표시
   if (settings.startParam) {
     try {
       await syncUIFromCurrentParameterValues(settings);
     } catch (e) {
-      // 값 읽기 실패해도 클릭/달력은 살아있어야 해서 hint만 표시
       setHint(e?.message || String(e));
     }
   }
@@ -277,7 +276,6 @@ async function render() {
 async function init() {
   await tableau.extensions.initializeAsync();
 
-  // 스크립트가 죽으면 바로 힌트에 나오게
   window.addEventListener("error", (e) => {
     setHint(`JS 오류: ${e.message || e.type}`);
   });
