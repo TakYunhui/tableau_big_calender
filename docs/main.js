@@ -21,12 +21,14 @@
   const cfgHint = document.getElementById("cfgHint");
 
   let mode = "summary";
+
   let fp = null;
   let selectedStart = null;
   let selectedEnd = null;
 
   let dashboard = null;
   let dashboardKey = "unknown";
+
   let allParams = [];
   let candidateParams = [];
 
@@ -72,15 +74,18 @@
 
   function tryParseToLocalDate(v) {
     if (v == null) return null;
+
     if (v instanceof Date && !isNaN(v.getTime())) {
       return new Date(v.getFullYear(), v.getMonth(), v.getDate());
     }
+
     if (typeof v === "string") {
       const m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
       if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
       const d = new Date(v);
       if (!isNaN(d.getTime())) return new Date(d.getFullYear(), d.getMonth(), d.getDate());
     }
+
     return null;
   }
 
@@ -105,6 +110,7 @@
       const maxV = av.max?.value ?? av.max;
       if (tryParseToLocalDate(minV) || tryParseToLocalDate(maxV)) return true;
     }
+
     return false;
   }
 
@@ -242,17 +248,12 @@
     selEnd.disabled = chkSingle.checked;
     if (chkSingle.checked) selEnd.value = "";
 
-    // ✅ 진단 메시지 강화
-    const pnames = (allParams || []).slice(0, 20).map(p => p.name).join(", ");
     if ((allParams || []).length === 0) {
       cfgHint.innerHTML =
-        "• 이 대시보드에서 파라미터를 찾지 못했습니다.<br/>" +
-        "• (진단) getParametersAsync() 결과가 0개입니다.<br/>" +
-        "• 이 상태면 date-updater도 동일하게 0개가 나와야 정상입니다.";
+        "• 파라미터를 찾지 못했습니다.<br/>" +
+        "• 이 메시지가 뜨면: (1) Tableau 안이 아닌 곳에서 열었거나, (2) Extensions API 스크립트 로드가 실패했거나, (3) 대시보드에 실제 파라미터가 없는 상태입니다.";
     } else {
-      cfgHint.innerHTML =
-        `• 전체 파라미터 ${allParams.length}개 중 후보 ${candidateParams.length}개 표시 중.<br/>` +
-        `• (앞 20개) ${pnames}`;
+      cfgHint.innerHTML = `• 전체 파라미터 ${allParams.length}개 중 날짜 후보 ${candidateParams.length}개 표시 중.`;
     }
 
     cfgModal.style.display = "block";
@@ -301,10 +302,10 @@
     setMode("summary");
   });
 
-  // ✅ 초기화 + 진단 로그
   async function initTableau() {
-    if (!window.tableau || !tableau.extensions) {
-      setStatus("Tableau Extensions API를 찾을 수 없습니다.");
+    // ✅ Extensions API 로드 실패 / Tableau 밖에서 열린 경우
+    if (!window.tableau || !window.tableau.extensions) {
+      setStatus("Tableau 안에서 열리지 않았거나 Extensions API 스크립트가 로드되지 않았습니다.");
       return;
     }
 
@@ -322,8 +323,7 @@
     await syncSelectedFromParameterValues();
     renderTexts();
 
-    // ✅ status에 짧게 진단 표시
-    setStatus(`대시보드: ${dname} / 파라미터: ${(allParams||[]).length}개`);
+    setStatus(`대시보드: ${dname} / 파라미터: ${(allParams || []).length}개`);
   }
 
   renderTexts();
