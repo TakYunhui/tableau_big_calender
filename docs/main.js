@@ -75,7 +75,7 @@
       const dashboard = tableau.extensions.dashboardContent.dashboard;
       const params = await dashboard.getParametersAsync();
 
-      // ✅ 여기만 너 대시보드 파라미터 이름으로 바꿔
+      // ✅ 너 대시보드 파라미터 이름으로 바꿔
       const START_PARAM = "P_시작일";
       const END_PARAM = "P_종료일";
 
@@ -94,14 +94,12 @@
     }
   }
 
-  // ----------------------------
   // 버튼 동작
-  // ----------------------------
   btnEdit.addEventListener("click", () => {
     ensureFlatpickr();
     setMode("edit");
 
-    // 편집 진입 시 기존 선택이 있으면 캘린더에도 반영
+    // 편집 진입 시 기존 선택 반영
     if (fp) {
       const ds = [];
       if (selectedStart) ds.push(selectedStart);
@@ -113,7 +111,6 @@
   });
 
   btnClose.addEventListener("click", () => {
-    // 취소: 선택 유지(롤백 원하면 여기서 selectedStart/End를 이전값으로 돌리면 됨)
     setMode("summary");
     renderTexts();
     setStatus(" ");
@@ -132,7 +129,7 @@
     setMode("summary");
   });
 
-  // 초기 상태
+  // 초기
   renderTexts();
   setStatus(" ");
   setMode("summary");
