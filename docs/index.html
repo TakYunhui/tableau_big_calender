@@ -8,12 +8,11 @@
   <!-- flatpickr css -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"/>
 
-  <!-- ✅ 내 CSS가 flatpickr 뒤에 와야 덮어씀 -->
-  <link rel="stylesheet" href="./styles.css?v=20260305_2" />
+  <!-- 내 CSS (flatpickr 뒤) -->
+  <link rel="stylesheet" href="./styles.css?v=20260305_3" />
 </head>
 <body>
   <div id="app" class="mode-summary">
-    <!-- Topbar (항상 표시) -->
     <div class="topbar">
       <div class="rangeText" id="rangeText">조회기간: -</div>
 
@@ -24,12 +23,10 @@
       </div>
     </div>
 
-    <!-- status (summary에서도 보여서 전체가 60px 느낌 유지) -->
     <div class="status" id="status"> </div>
 
-    <!-- ✅ 달력 모달: edit 모드에서만 표시 -->
+    <!-- edit 모드에서만 보이는 모달 -->
     <div class="calModal" id="calModal">
-      <!-- ✅ 박스만 배경 -->
       <div class="calBox">
         <div class="editorArea" id="editorArea">
           <div class="calWrap">
@@ -51,17 +48,13 @@
       </div>
     </div>
 
-    <!-- ✅ 눈속임 filler: summary 모드에서 남는 영역 -->
     <div class="filler" aria-hidden="true"></div>
   </div>
 
-  <!-- libs -->
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
-
-  <!-- tableau extension api -->
   <script src="https://cdn.jsdelivr.net/npm/tableau-api@1.10.0/dist/tableau.extensions.1.latest.min.js"></script>
 
-  <script src="./main.js?v=20260305_2"></script>
+  <script src="./main.js?v=20260305_3"></script>
 </body>
 </html>
