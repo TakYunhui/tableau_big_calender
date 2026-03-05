@@ -21,7 +21,6 @@
   const cfgHint = document.getElementById("cfgHint");
 
   let mode = "summary";
-
   let fp = null;
   let selectedStart = null;
   let selectedEnd = null;
@@ -29,7 +28,7 @@
   let dashboard = null;
   let dashboardKey = "unknown";
   let allParams = [];
-  let candidateParams = []; // ✅ 날짜 후보(강화)
+  let candidateParams = [];
 
   let mapStartName = "";
   let mapEndName = "";
@@ -66,7 +65,6 @@
     }
   }
 
-  // ---- Date helpers ----
   function toUTCDateLikeLocalDate(dLocal) {
     if (!dLocal) return null;
     return new Date(Date.UTC(dLocal.getFullYear(), dLocal.getMonth(), dLocal.getDate()));
@@ -74,19 +72,15 @@
 
   function tryParseToLocalDate(v) {
     if (v == null) return null;
-
     if (v instanceof Date && !isNaN(v.getTime())) {
       return new Date(v.getFullYear(), v.getMonth(), v.getDate());
     }
-
     if (typeof v === "string") {
-      // YYYY-MM-DD 우선
       const m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
       if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
       const d = new Date(v);
       if (!isNaN(d.getTime())) return new Date(d.getFullYear(), d.getMonth(), d.getDate());
     }
-
     return null;
   }
 
@@ -94,9 +88,8 @@
     return p?.allowableValues?.type || "unknown";
   }
 
-  // ✅ 후보 판정: (1) dataType이 date류 OR (2) currentValue가 날짜로 파싱 OR (3) allowableValues에서 날짜로 파싱
   function isDateCandidate(p) {
-    const dt = String(p?.dataType || "").toLowerCase(); // 'date', 'date-time', 'datetime', ...
+    const dt = String(p?.dataType || "").toLowerCase();
     if (dt === "date" || dt === "date-time" || dt === "datetime" || dt.includes("date")) return true;
 
     const cv = p?.currentValue?.value;
@@ -104,17 +97,14 @@
 
     const av = p?.allowableValues;
     if (av?.type === "list" && Array.isArray(av.values) && av.values.length > 0) {
-      // values: DataValue[] 일 수 있음
       const first = av.values[0]?.value ?? av.values[0];
       if (tryParseToLocalDate(first)) return true;
     }
-
     if (av?.type === "range" && av.min && av.max) {
       const minV = av.min?.value ?? av.min;
       const maxV = av.max?.value ?? av.max;
       if (tryParseToLocalDate(minV) || tryParseToLocalDate(maxV)) return true;
     }
-
     return false;
   }
 
@@ -178,7 +168,6 @@
     }
   }
 
-  // ---- flatpickr ----
   function ensureFlatpickr() {
     if (fp) return;
 
@@ -224,7 +213,6 @@
     }
   }
 
-  // ---- config UI ----
   function fillSelect(sel, options) {
     sel.innerHTML = "";
     options.forEach(o => {
@@ -240,8 +228,7 @@
       candidateParams.map(p => {
         const dt = String(p.dataType || "unknown");
         const at = getAllowableType(p);
-        const label = `${p.name}  (${dt}, ${at})`;
-        return { value: p.name, label };
+        return { value: p.name, label: `${p.name}  (${dt}, ${at})` };
       })
     );
 
@@ -255,16 +242,17 @@
     selEnd.disabled = chkSingle.checked;
     if (chkSingle.checked) selEnd.value = "";
 
-    if (allParams.length === 0) {
-      cfgHint.innerHTML = "• 이 대시보드에서 파라미터를 찾지 못했습니다.";
-    } else if (candidateParams.length === 0) {
+    // ✅ 진단 메시지 강화
+    const pnames = (allParams || []).slice(0, 20).map(p => p.name).join(", ");
+    if ((allParams || []).length === 0) {
       cfgHint.innerHTML =
-        "• 파라미터는 있지만 날짜 후보가 없습니다.<br/>" +
-        "• (체크) 파라미터가 ‘문자열’로 만들어져 있거나, 값이 날짜로 파싱되지 않을 수 있습니다.";
+        "• 이 대시보드에서 파라미터를 찾지 못했습니다.<br/>" +
+        "• (진단) getParametersAsync() 결과가 0개입니다.<br/>" +
+        "• 이 상태면 date-updater도 동일하게 0개가 나와야 정상입니다.";
     } else {
       cfgHint.innerHTML =
-        `• 전체 파라미터 ${allParams.length}개 중 날짜 후보 ${candidateParams.length}개 표시 중.<br/>` +
-        "• (표시) 파라미터명 (dataType, allowableValues.type)";
+        `• 전체 파라미터 ${allParams.length}개 중 후보 ${candidateParams.length}개 표시 중.<br/>` +
+        `• (앞 20개) ${pnames}`;
     }
 
     cfgModal.style.display = "block";
@@ -289,39 +277,6 @@
     renderTexts();
   });
 
-  // ---- init tableau ----
-  async function initTableau() {
-    if (!window.tableau || !tableau.extensions) {
-      setStatus("Tableau Extensions API를 찾을 수 없습니다.");
-      return;
-    }
-
-    await tableau.extensions.initializeAsync();
-    dashboard = tableau.extensions.dashboardContent.dashboard;
-
-    const dname = dashboard?.name || "대시보드";
-    dashboardKey = `dash_${dname}`;
-    cfgDashName.textContent = dname;
-
-    allParams = await dashboard.getParametersAsync();
-
-    // ✅ 날짜 후보 강화
-    candidateParams = (allParams || []).filter(isDateCandidate);
-    candidateParams.sort((a, b) => String(a.name).localeCompare(String(b.name), "ko"));
-
-    await loadMappingFromSettings();
-
-    if (!mapStartName) {
-      setStatus("날짜 파라미터 매핑이 필요합니다. [설정]을 누르세요.");
-    } else {
-      setStatus(" ");
-    }
-
-    await syncSelectedFromParameterValues();
-    renderTexts();
-  }
-
-  // ---- buttons ----
   btnEdit.addEventListener("click", async () => {
     if (!mapStartName) {
       openConfig();
@@ -346,7 +301,31 @@
     setMode("summary");
   });
 
-  // ---- boot ----
+  // ✅ 초기화 + 진단 로그
+  async function initTableau() {
+    if (!window.tableau || !tableau.extensions) {
+      setStatus("Tableau Extensions API를 찾을 수 없습니다.");
+      return;
+    }
+
+    await tableau.extensions.initializeAsync();
+    dashboard = tableau.extensions.dashboardContent.dashboard;
+
+    const dname = dashboard?.name || "대시보드";
+    dashboardKey = `dash_${dname}`;
+    cfgDashName.textContent = dname;
+
+    allParams = await dashboard.getParametersAsync();
+    candidateParams = (allParams || []).filter(isDateCandidate);
+
+    await loadMappingFromSettings();
+    await syncSelectedFromParameterValues();
+    renderTexts();
+
+    // ✅ status에 짧게 진단 표시
+    setStatus(`대시보드: ${dname} / 파라미터: ${(allParams||[]).length}개`);
+  }
+
   renderTexts();
   setStatus("초기화 중...");
   initTableau().catch(e => setStatus(`초기화 실패: ${String(e).slice(0, 120)}`));
