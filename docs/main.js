@@ -49,7 +49,6 @@
     if (fp) return;
 
     const input = document.getElementById("fp");
-
     fp = flatpickr(input, {
       mode: "range",
       inline: true,
@@ -94,19 +93,16 @@
     }
   }
 
-  // 버튼 동작
   btnEdit.addEventListener("click", () => {
     ensureFlatpickr();
     setMode("edit");
 
-    // 편집 진입 시 기존 선택 반영
     if (fp) {
       const ds = [];
       if (selectedStart) ds.push(selectedStart);
       if (selectedEnd) ds.push(selectedEnd);
       if (ds.length) fp.setDate(ds, false);
     }
-
     setStatus("기간을 선택 후 [적용]하세요.");
   });
 
@@ -125,11 +121,9 @@
 
     renderTexts();
     await applyToTableau(selectedStart, selectedEnd);
-
     setMode("summary");
   });
 
-  // 초기
   renderTexts();
   setStatus(" ");
   setMode("summary");
