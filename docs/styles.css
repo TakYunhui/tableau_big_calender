@@ -1,12 +1,6 @@
 /* =========================
-   0) 배경 + 스크롤 차단
-   - 투명 안 먹는 환경 대비: --dash-bg로 "대시보드 배경색"을 맞춘다
-   - URL 파라미터 ?bg=#F4F4F4 로 주입 (main.js에서 처리)
+   0) 배경 투명 + 스크롤 차단
    ========================= */
-:root{
-  --dash-bg: transparent; /* 기본 */
-}
-
 html, body {
   margin: 0;
   padding: 0;
@@ -23,20 +17,9 @@ html, body {
   width: 480px;
   height: 200px;
   box-sizing: border-box;
-  background: transparent;
+  background: transparent !important;
   display: flex;
   flex-direction: column;
-}
-
-/* ✅ 눈속임 핵심:
-   - summary 모드에서는 투명 대신 대시보드 배경색(--dash-bg)로 맞춰서
-     "흰 판이 가리는 느낌"을 최소화한다.
-*/
-.mode-summary {
-  background: var(--dash-bg) !important;
-}
-.mode-summary #app {
-  background: var(--dash-bg) !important;
 }
 
 /* =========================
@@ -81,17 +64,54 @@ html, body {
 .btn.ghost { background: rgba(255,255,255,0.0); }
 
 /* =========================
-   3) Editor Area
-   - 남은 높이 = 200 - 36(topbar) - 24(status) = 140px (대략)
+   3) status (상단 60px 느낌 유지)
+   ========================= */
+.status {
+  flex: 0 0 24px;
+  font-size: 11px;
+  opacity: 0.75;
+  padding: 0 10px 6px;
+  box-sizing: border-box;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* =========================
+   4) 달력 모달 (업데이트 팝업 방식)
+   - calModal: 바깥(투명)
+   - calBox: 박스만 배경
+   ========================= */
+.calModal{
+  flex: 1;
+  padding: 6px 10px;
+  box-sizing: border-box;
+  background: transparent; /* 여기 딤 넣고싶으면 rgba(0,0,0,0.03) 정도 */
+  overflow: hidden;
+  display: none; /* 기본 숨김 (summary) */
+}
+
+.calBox{
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.92); /* ✅ 박스만 배경 */
+  border: 1px solid rgba(0,0,0,0.12);
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+/* =========================
+   5) Editor Area (calBox 안)
+   - 남은 영역 전체 사용
    ========================= */
 .editorArea {
-  flex: 0 0 140px;
+  height: 100%;
   display: flex;
   gap: 8px;
   padding: 6px 10px;
   box-sizing: border-box;
   overflow: hidden;
-  border-radius: 10px;
 }
 
 /* 달력 영역 */
@@ -103,7 +123,7 @@ html, body {
   position: relative;
 }
 
-/* inline 캘린더는 input이 의미 없으니 숨김 */
+/* inline 캘린더는 input 숨김 */
 .fpInput {
   position: absolute;
   opacity: 0;
@@ -112,21 +132,34 @@ html, body {
   height: 0;
 }
 
-/* flatpickr 튀는거 방지 */
-.flatpickr-calendar {
-  margin: 0 !important;
+/* =========================
+   6) flatpickr 흰 배경 제거 (가장 중요)
+   - 달력 “흰 판” 느낌을 없애고
+   - 배경은 calBox만 담당하게 함
+   ========================= */
+.flatpickr-calendar,
+.flatpickr-months,
+.flatpickr-weekdays,
+.flatpickr-weekdaycontainer,
+.flatpickr-days,
+.flatpickr-innerContainer,
+.flatpickr-rContainer {
+  background: transparent !important;
   box-shadow: none !important;
 }
 
-/* ✅ “잘림” 해결:
-   - 달력 전체를 스케일로 줄여 height를 140px 내에 맞춤
-*/
+.flatpickr-calendar {
+  border: 0 !important;
+  margin: 0 !important;
+}
+
+/* ✅ 잘림 대응: scale */
 .calWrap .flatpickr-calendar {
   transform: scale(0.86);
   transform-origin: top left;
 }
 
-/* 달력 내부 높이 최소화 */
+/* 내부 높이 최소화 */
 .flatpickr-innerContainer,
 .flatpickr-rContainer,
 .flatpickr-days {
@@ -134,7 +167,7 @@ html, body {
 }
 
 /* =========================
-   4) Side Panel
+   7) Side Panel
    ========================= */
 .side {
   flex: 1;
@@ -169,44 +202,30 @@ html, body {
 }
 
 /* =========================
-   5) status (summary에서도 보여서 전체가 60px 느낌)
-   ========================= */
-.status {
-  flex: 0 0 24px;
-  font-size: 11px;
-  opacity: 0.75;
-  padding: 0 10px 6px;
-  box-sizing: border-box;
-  white-space: nowrap;
-  overflow: hidden;
-  text-overflow: ellipsis;
-}
-
-/* =========================
-   6) filler (눈속임)
-   - summary 모드에서 남는 영역을 대시보드 배경색으로 채움
-   - edit 모드에선 의미 없어서 숨김
+   8) filler (눈속임)
+   - summary 모드에서 남는 영역은 투명으로 둔다
+   - edit 모드에서는 모달이 보이므로 filler 숨김
    ========================= */
 .filler{
   flex: 1;
   background: transparent;
   pointer-events: none;
 }
-.mode-summary .filler{
-  background: var(--dash-bg);
-}
-.mode-edit .filler{
-  display: none;
-}
 
 /* =========================
-   7) 모드 전환
-   - summary: editor 숨김 (평소 60px만 보이는 것처럼)
-   - edit: rangeText 숨김 + editor 표시
+   9) 모드 전환
+   - summary: 모달 숨김
+   - edit: 모달 표시 + rangeText 숨김
    ========================= */
-.mode-summary .editorArea { display: none; }
+.mode-summary .calModal { display: none; }
+.mode-edit .calModal { display: block; }
+
 .mode-edit .rangeText { display: none; }
 
+/* edit 모드: filler 숨김 (모달이 공간 차지) */
+.mode-edit .filler { display: none; }
+
+/* 버튼 노출 */
 .mode-edit #btnEdit { display: none; }
 .mode-summary #btnApply,
 .mode-summary #btnClose { display: none; }
