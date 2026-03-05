@@ -1,332 +1,202 @@
-(function () {
-  const app = document.getElementById("app");
+/* global tableau, flatpickr */
 
-  const rangeText = document.getElementById("rangeText");
-  const startText = document.getElementById("startText");
-  const endText = document.getElementById("endText");
-  const statusEl = document.getElementById("status");
+const SETTINGS_KEYS = {
+  kind: "date_kind", // "range" | "single"
+  startParam: "date_start_param",
+  endParam: "date_end_param",
+  format: "date_format", // flatpickr format
+};
 
-  const btnSettings = document.getElementById("btnSettings");
-  const btnEdit = document.getElementById("btnEdit");
-  const btnApply = document.getElementById("btnApply");
-  const btnClose = document.getElementById("btnClose");
+const DEFAULTS = {
+  kind: "range",
+  format: "Y-m-d",
+};
 
-  const cfgModal = document.getElementById("cfgModal");
-  const cfgDashName = document.getElementById("cfgDashName");
-  const selStart = document.getElementById("selStart");
-  const selEnd = document.getElementById("selEnd");
-  const chkSingle = document.getElementById("chkSingle");
-  const btnCfgCancel = document.getElementById("btnCfgCancel");
-  const btnCfgSave = document.getElementById("btnCfgSave");
-  const cfgHint = document.getElementById("cfgHint");
+let fpStart = null;
+let fpEnd = null;
 
-  let mode = "summary";
+function qs(id) {
+  return document.getElementById(id);
+}
 
-  let fp = null;
-  let selectedStart = null;
-  let selectedEnd = null;
+function setHint(msg) {
+  qs("hint").textContent = msg || "";
+}
 
-  let dashboard = null;
-  let dashboardKey = "unknown";
+function isAuthoringMode() {
+  // Tableau Extensions API - environment.mode: "authoring" or "viewing"
+  return tableau?.extensions?.environment?.mode === "authoring";
+}
 
-  let allParams = [];
-  let candidateParams = [];
+function loadSettings() {
+  const s = tableau.extensions.settings;
 
-  let mapStartName = "";
-  let mapEndName = "";
-  let mapSingle = false;
+  const kind = s.get(SETTINGS_KEYS.kind) || DEFAULTS.kind;
+  const startParam = s.get(SETTINGS_KEYS.startParam) || "";
+  const endParam = s.get(SETTINGS_KEYS.endParam) || "";
+  const format = s.get(SETTINGS_KEYS.format) || DEFAULTS.format;
 
-  function setMode(next) {
-    mode = next;
-    app.classList.toggle("mode-summary", mode === "summary");
-    app.classList.toggle("mode-edit", mode === "edit");
+  return { kind, startParam, endParam, format };
+}
+
+async function getDashboard() {
+  // dashboardContent.dashboard (extensions dashboard)
+  return tableau.extensions.dashboardContent.dashboard;
+}
+
+async function getParametersMap() {
+  const dash = await getDashboard();
+  const params = await dash.getParametersAsync();
+  const map = new Map();
+  params.forEach((p) => map.set(p.name, p));
+  return map;
+}
+
+function destroyFlatpickr() {
+  if (fpStart) {
+    fpStart.destroy();
+    fpStart = null;
+  }
+  if (fpEnd) {
+    fpEnd.destroy();
+    fpEnd = null;
+  }
+}
+
+function initFlatpickrUI({ kind, format }) {
+  destroyFlatpickr();
+
+  // ko locale
+  if (flatpickr?.l10ns?.ko) {
+    flatpickr.localize(flatpickr.l10ns.ko);
   }
 
-  function setStatus(msg) {
-    statusEl.textContent = msg || " ";
+  fpStart = flatpickr(qs("startInput"), {
+    dateFormat: format,
+    allowInput: true,
+  });
+
+  fpEnd = flatpickr(qs("endInput"), {
+    dateFormat: format,
+    allowInput: true,
+  });
+
+  // single 모드면 종료일 숨김
+  qs("endRow").style.display = kind === "single" ? "none" : "grid";
+}
+
+function getPickedDates(kind) {
+  const start = fpStart?.selectedDates?.[0] || null;
+  let end = fpEnd?.selectedDates?.[0] || null;
+
+  if (kind === "single") end = start; // 싱글이면 동일값 처리
+  return { start, end };
+}
+
+function toISODateOnly(d) {
+  if (!(d instanceof Date)) return "";
+  // 시간은 버리고 YYYY-MM-DD만
+  const y = d.getFullYear();
+  const m = String(d.getMonth() + 1).padStart(2, "0");
+  const day = String(d.getDate()).padStart(2, "0");
+  return `${y}-${m}-${day}`;
+}
+
+async function applyToParameters({ kind, startParam, endParam }) {
+  const { start, end } = getPickedDates(kind);
+
+  if (!startParam) throw new Error("시작일 파라미터가 설정되지 않았습니다.");
+  if (kind === "range" && !endParam) throw new Error("종료일 파라미터가 설정되지 않았습니다.");
+  if (!start) throw new Error("시작일을 선택하세요.");
+  if (kind === "range" && !end) throw new Error("종료일을 선택하세요.");
+
+  const map = await getParametersMap();
+
+  const pStart = map.get(startParam);
+  if (!pStart) throw new Error(`파라미터를 찾을 수 없습니다: ${startParam}`);
+
+  // Tableau 파라미터 타입/허용값에 따라 setValueAsync에 Date를 넣어도 되고,
+  // 문자열을 넣어도 되는데(설정에 따라), 가장 안전하게 "YYYY-MM-DD" 문자열로 넣음.
+  await pStart.changeValueAsync(toISODateOnly(start));
+
+  if (kind === "range") {
+    const pEnd = map.get(endParam);
+    if (!pEnd) throw new Error(`파라미터를 찾을 수 없습니다: ${endParam}`);
+    await pEnd.changeValueAsync(toISODateOnly(end));
   }
+}
 
-  function fmtYMD(d) {
-    if (!d) return "-";
-    const yyyy = d.getFullYear();
-    const mm = String(d.getMonth() + 1).padStart(2, "0");
-    const dd = String(d.getDate()).padStart(2, "0");
-    return `${yyyy}-${mm}-${dd}`;
-  }
+async function openConfigDialog() {
+  // config.html은 같은 origin에서 제공되어야 함 (GitHub Pages 등)
+  const url = `${window.location.origin}${window.location.pathname.replace(/index\.html?$/i, "")}config.html`;
 
-  function renderTexts() {
-    startText.textContent = fmtYMD(selectedStart);
-    endText.textContent = fmtYMD(selectedEnd);
+  // payload로 현재 설정을 넘겨도 되지만, config.html에서 settings를 직접 읽어도 됨
+  const payload = "";
 
-    if (selectedStart && selectedEnd) {
-      rangeText.textContent = `조회기간: ${fmtYMD(selectedStart)} ~ ${fmtYMD(selectedEnd)}`;
-    } else if (selectedStart && !selectedEnd) {
-      rangeText.textContent = `조회기간: ${fmtYMD(selectedStart)} ~ ${fmtYMD(selectedStart)}`;
-    } else {
-      rangeText.textContent = `조회기간: -`;
-    }
-  }
-
-  function toUTCDateLikeLocalDate(dLocal) {
-    if (!dLocal) return null;
-    return new Date(Date.UTC(dLocal.getFullYear(), dLocal.getMonth(), dLocal.getDate()));
-  }
-
-  function tryParseToLocalDate(v) {
-    if (v == null) return null;
-
-    if (v instanceof Date && !isNaN(v.getTime())) {
-      return new Date(v.getFullYear(), v.getMonth(), v.getDate());
-    }
-
-    if (typeof v === "string") {
-      const m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
-      if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-      const d = new Date(v);
-      if (!isNaN(d.getTime())) return new Date(d.getFullYear(), d.getMonth(), d.getDate());
-    }
-
-    return null;
-  }
-
-  function getAllowableType(p) {
-    return p?.allowableValues?.type || "unknown";
-  }
-
-  function isDateCandidate(p) {
-    const dt = String(p?.dataType || "").toLowerCase();
-    if (dt === "date" || dt === "date-time" || dt === "datetime" || dt.includes("date")) return true;
-
-    const cv = p?.currentValue?.value;
-    if (tryParseToLocalDate(cv)) return true;
-
-    const av = p?.allowableValues;
-    if (av?.type === "list" && Array.isArray(av.values) && av.values.length > 0) {
-      const first = av.values[0]?.value ?? av.values[0];
-      if (tryParseToLocalDate(first)) return true;
-    }
-    if (av?.type === "range" && av.min && av.max) {
-      const minV = av.min?.value ?? av.min;
-      const maxV = av.max?.value ?? av.max;
-      if (tryParseToLocalDate(minV) || tryParseToLocalDate(maxV)) return true;
-    }
-
-    return false;
-  }
-
-  function settingKey(k) {
-    return `${dashboardKey}__${k}`;
-  }
-
-  async function loadMappingFromSettings() {
-    try {
-      const s = tableau.extensions.settings;
-      mapStartName = s.get(settingKey("startParam")) || "";
-      mapEndName = s.get(settingKey("endParam")) || "";
-      mapSingle = (s.get(settingKey("single")) || "0") === "1";
-    } catch (_) {
-      mapStartName = "";
-      mapEndName = "";
-      mapSingle = false;
-    }
-  }
-
-  async function saveMappingToSettings() {
-    const start = selStart.value || "";
-    const end = selEnd.value || "";
-    const single = chkSingle.checked;
-
-    mapStartName = start;
-    mapEndName = single ? "" : end;
-    mapSingle = single;
-
-    try {
-      const s = tableau.extensions.settings;
-      s.set(settingKey("startParam"), mapStartName);
-      s.set(settingKey("endParam"), mapEndName);
-      s.set(settingKey("single"), mapSingle ? "1" : "0");
-      await s.saveAsync();
-      setStatus("설정 저장 완료");
-    } catch (e) {
-      setStatus("설정 저장 실패(권한/환경 확인)");
-    }
-  }
-
-  function getParamByName(name) {
-    if (!name) return null;
-    return (allParams || []).find(p => p.name === name) || null;
-  }
-
-  async function syncSelectedFromParameterValues() {
-    const pStart = getParamByName(mapStartName);
-    const pEnd = mapSingle ? null : getParamByName(mapEndName);
-
-    if (!pStart) return;
-
-    const startLocal = tryParseToLocalDate(pStart.currentValue?.value);
-    const endLocal = pEnd ? tryParseToLocalDate(pEnd.currentValue?.value) : startLocal;
-
-    if (startLocal) selectedStart = startLocal;
-    if (endLocal) selectedEnd = endLocal;
-
-    if (fp && selectedStart) {
-      fp.setDate(selectedEnd ? [selectedStart, selectedEnd] : [selectedStart], false);
-    }
-  }
-
-  function ensureFlatpickr() {
-    if (fp) return;
-
-    const input = document.getElementById("fp");
-    fp = flatpickr(input, {
-      mode: "range",
-      inline: true,
-      locale: (window.flatpickr && window.flatpickr.l10ns && window.flatpickr.l10ns.ko) ? "ko" : undefined,
-      dateFormat: "Y-m-d",
-      defaultDate: [],
-      onChange: (dates) => {
-        selectedStart = dates[0] || null;
-        selectedEnd = dates[1] || null;
-        renderTexts();
-      }
+  try {
+    await tableau.extensions.ui.displayDialogAsync(url, payload, {
+      height: 420,
+      width: 520,
     });
+  } catch (e) {
+    // 사용자가 닫으면 에러로 떨어질 수 있음(정상)
+    // 콘솔은 남기되 UI는 조용히
+    console.warn("Config dialog closed or failed:", e);
   }
+}
 
-  async function applyToTableau() {
-    const pStart = getParamByName(mapStartName);
-    const pEnd = mapSingle ? null : getParamByName(mapEndName);
+async function render() {
+  const settings = loadSettings();
 
-    if (!pStart) {
-      setStatus("시작일 파라미터 매핑이 없습니다. [설정]에서 지정하세요.");
-      return;
-    }
-    if (!selectedStart) {
-      setStatus("시작일을 먼저 선택하세요.");
-      return;
-    }
-    if (mapSingle || !selectedEnd) selectedEnd = selectedStart;
+  // authoring에서만 설정 버튼 노출
+  qs("settingsBtn").style.display = isAuthoringMode() ? "inline-flex" : "none";
 
+  initFlatpickrUI(settings);
+
+  // 힌트: 설정 안 했을 때만 안내
+  if (!settings.startParam || (settings.kind === "range" && !settings.endParam)) {
+    setHint(isAuthoringMode() ? "⚙ 설정에서 파라미터를 매핑하세요." : "관리자가 조회기간 설정을 점검 중입니다.");
+  } else {
+    setHint("");
+  }
+}
+
+async function init() {
+  await tableau.extensions.initializeAsync();
+
+  // 버튼 이벤트
+  qs("applyBtn").addEventListener("click", async () => {
     try {
-      const startUTC = toUTCDateLikeLocalDate(selectedStart);
-      const endUTC = toUTCDateLikeLocalDate(selectedEnd);
-
-      await pStart.changeValueAsync(startUTC);
-      if (pEnd) await pEnd.changeValueAsync(endUTC);
-
-      setStatus(`적용됨: ${fmtYMD(selectedStart)} ~ ${fmtYMD(selectedEnd)}`);
+      setHint("");
+      const settings = loadSettings();
+      await applyToParameters(settings);
+      setHint("적용되었습니다.");
     } catch (e) {
-      setStatus(`적용 실패: ${String(e).slice(0, 120)}`);
+      setHint(e?.message || String(e));
     }
-  }
-
-  function fillSelect(sel, options) {
-    sel.innerHTML = "";
-    options.forEach(o => {
-      const op = document.createElement("option");
-      op.value = o.value;
-      op.textContent = o.label;
-      sel.appendChild(op);
-    });
-  }
-
-  function openConfig() {
-    const opts = [{ value: "", label: "선택 안 함" }].concat(
-      candidateParams.map(p => {
-        const dt = String(p.dataType || "unknown");
-        const at = getAllowableType(p);
-        return { value: p.name, label: `${p.name}  (${dt}, ${at})` };
-      })
-    );
-
-    fillSelect(selStart, opts);
-    fillSelect(selEnd, opts);
-
-    selStart.value = mapStartName || "";
-    selEnd.value = mapEndName || "";
-    chkSingle.checked = !!mapSingle;
-
-    selEnd.disabled = chkSingle.checked;
-    if (chkSingle.checked) selEnd.value = "";
-
-    if ((allParams || []).length === 0) {
-      cfgHint.innerHTML =
-        "• 파라미터를 찾지 못했습니다.<br/>" +
-        "• 이 메시지가 뜨면: (1) Tableau 안이 아닌 곳에서 열었거나, (2) Extensions API 스크립트 로드가 실패했거나, (3) 대시보드에 실제 파라미터가 없는 상태입니다.";
-    } else {
-      cfgHint.innerHTML = `• 전체 파라미터 ${allParams.length}개 중 날짜 후보 ${candidateParams.length}개 표시 중.`;
-    }
-
-    cfgModal.style.display = "block";
-  }
-
-  function closeConfig() {
-    cfgModal.style.display = "none";
-  }
-
-  chkSingle.addEventListener("change", () => {
-    selEnd.disabled = chkSingle.checked;
-    if (chkSingle.checked) selEnd.value = "";
   });
 
-  btnSettings.addEventListener("click", () => openConfig());
-  btnCfgCancel.addEventListener("click", () => closeConfig());
-
-  btnCfgSave.addEventListener("click", async () => {
-    await saveMappingToSettings();
-    closeConfig();
-    await syncSelectedFromParameterValues();
-    renderTexts();
+  qs("closeBtn").addEventListener("click", () => {
+    // 확장 UI를 “닫는다”는 건 실제로는 확장 자체를 숨길 수 없어서
+    // 사용자 체감상 안내만: (너가 원하면 여기서 컨테이너 높이 줄이는 방식 등 추가 가능)
+    setHint("닫기(표시 유지).");
   });
 
-  btnEdit.addEventListener("click", async () => {
-    if (!mapStartName) {
-      openConfig();
-      setStatus("먼저 [설정]에서 시작/종료 파라미터를 지정하세요.");
-      return;
-    }
-    ensureFlatpickr();
-    setMode("edit");
-
-    await syncSelectedFromParameterValues();
-    renderTexts();
-    setStatus("기간을 선택 후 [적용]하세요.");
+  qs("settingsBtn").addEventListener("click", async () => {
+    await openConfigDialog();
+    // 다이얼로그 닫힌 뒤 settings 반영 재렌더
+    await render();
   });
 
-  btnClose.addEventListener("click", () => {
-    setMode("summary");
-    setStatus(" ");
+  // Configure에서 settings가 바뀌면 자동 반영
+  tableau.extensions.settings.addEventListener(tableau.TableauEventType.SettingsChanged, async () => {
+    await render();
   });
 
-  btnApply.addEventListener("click", async () => {
-    await applyToTableau();
-    setMode("summary");
-  });
+  await render();
+}
 
-  async function initTableau() {
-    // ✅ Extensions API 로드 실패 / Tableau 밖에서 열린 경우
-    if (!window.tableau || !window.tableau.extensions) {
-      setStatus("Tableau 안에서 열리지 않았거나 Extensions API 스크립트가 로드되지 않았습니다.");
-      return;
-    }
-
-    await tableau.extensions.initializeAsync();
-    dashboard = tableau.extensions.dashboardContent.dashboard;
-
-    const dname = dashboard?.name || "대시보드";
-    dashboardKey = `dash_${dname}`;
-    cfgDashName.textContent = dname;
-
-    allParams = await dashboard.getParametersAsync();
-    candidateParams = (allParams || []).filter(isDateCandidate);
-
-    await loadMappingFromSettings();
-    await syncSelectedFromParameterValues();
-    renderTexts();
-
-    setStatus(`대시보드: ${dname} / 파라미터: ${(allParams || []).length}개`);
-  }
-
-  renderTexts();
-  setStatus("초기화 중...");
-  initTableau().catch(e => setStatus(`초기화 실패: ${String(e).slice(0, 120)}`));
-})();
+init().catch((e) => {
+  console.error(e);
+  setHint(e?.message || String(e));
+});
