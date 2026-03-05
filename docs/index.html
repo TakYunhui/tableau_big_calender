@@ -1,95 +1,50 @@
 <!doctype html>
 <html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>Date UI</title>
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Date Extension</title>
 
-  <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"/>
-  <link rel="stylesheet" href="./styles.css?v=20260305_8" />
-</head>
-<body>
-  <div id="app" class="mode-summary">
-    <div class="topbar">
-      <div class="rangeText" id="rangeText">조회기간: -</div>
+    <!-- Tableau Extensions API (너가 쓰던 방식 유지: lib 경로) -->
+    <script src="lib/tableau.extensions.1.latest.min.js"></script>
 
-      <div class="btnRow">
-        <button class="btn ghost" id="btnSettings" type="button">설정</button>
-        <button class="btn ghost" id="btnEdit" type="button">기간변경</button>
+    <!-- Flatpickr (이미 분리해뒀다고 했으니 경로만 맞추면 됨) -->
+    <link rel="stylesheet" href="vendor/flatpickr/flatpickr.min.css" />
+    <script src="vendor/flatpickr/flatpickr.min.js"></script>
+    <script src="vendor/flatpickr/l10n/ko.js"></script>
 
-        <button class="btn primary" id="btnApply" type="button">적용</button>
-        <button class="btn" id="btnClose" type="button">닫기</button>
+    <link rel="stylesheet" href="styles.css" />
+  </head>
+
+  <body>
+    <div class="root">
+      <div class="topbar">
+        <div class="title">조회기간</div>
+
+        <!-- authoring에서만 표시 -->
+        <button id="settingsBtn" class="iconBtn" type="button" aria-label="설정">
+          ⚙
+        </button>
       </div>
+
+      <div class="row">
+        <div class="label">시작일</div>
+        <input id="startInput" class="input" type="text" placeholder="날짜 선택" />
+      </div>
+
+      <div class="row" id="endRow">
+        <div class="label">종료일</div>
+        <input id="endInput" class="input" type="text" placeholder="날짜 선택" />
+      </div>
+
+      <div class="actions">
+        <button id="applyBtn" class="btn primary" type="button">적용</button>
+        <button id="closeBtn" class="btn" type="button">닫기</button>
+      </div>
+
+      <div id="hint" class="hint"></div>
     </div>
 
-    <div class="status" id="status"> </div>
-
-    <!-- 설정 모달 -->
-    <div class="cfgModal" id="cfgModal">
-      <div class="cfgBox">
-        <div class="cfgHeader">
-          <div class="cfgTitle">대시보드 날짜 파라미터 매핑</div>
-          <div class="cfgSub" id="cfgDashName">-</div>
-        </div>
-
-        <div class="cfgBody">
-          <div class="cfgRow">
-            <label class="cfgLabel" for="selStart">시작일 파라미터</label>
-            <select id="selStart" class="cfgSelect"></select>
-          </div>
-
-          <div class="cfgRow">
-            <label class="cfgLabel" for="selEnd">종료일 파라미터</label>
-            <select id="selEnd" class="cfgSelect"></select>
-          </div>
-
-          <div class="cfgRow cfgRowInline">
-            <input id="chkSingle" type="checkbox" />
-            <label for="chkSingle">단일 날짜(시작=종료)로 사용</label>
-          </div>
-
-          <div class="cfgHint" id="cfgHint"></div>
-        </div>
-
-        <div class="cfgFooter">
-          <button class="btn ghost" id="btnCfgCancel" type="button">닫기</button>
-          <button class="btn primary" id="btnCfgSave" type="button">저장</button>
-        </div>
-      </div>
-    </div>
-
-    <!-- 달력 모달 -->
-    <div class="calModal" id="calModal">
-      <div class="calBox">
-        <div class="editorArea" id="editorArea">
-          <div class="calWrap">
-            <input id="fp" class="fpInput" />
-          </div>
-
-          <div class="side">
-            <div class="kv">
-              <div class="k">시작</div><div class="v" id="startText">-</div>
-              <div class="k">종료</div><div class="v" id="endText">-</div>
-            </div>
-
-            <div class="hint" id="hintText">
-              • 달력에서 기간을 선택한 뒤 [적용]을 누르세요.<br/>
-              • [닫기]는 편집을 취소합니다.
-            </div>
-          </div>
-        </div>
-      </div>
-    </div>
-
-    <div class="filler" aria-hidden="true"></div>
-  </div>
-
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
-  <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
-
-  <!-- ✅ Tableau Extensions API Library (date-updater와 동일 경로) -->
-  <script src="https://extensions.tableauusercontent.com/resources/tableau.extensions.1.latest.min.js"></script>
-
-  <script src="./main.js?v=20260305_8"></script>
-</body>
+    <script src="main.js"></script>
+  </body>
 </html>
