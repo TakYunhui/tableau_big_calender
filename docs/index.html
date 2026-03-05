@@ -3,47 +3,45 @@
   <head>
     <meta charset="utf-8" />
     <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Date Extension</title>
+    <title>Date UI</title>
 
-    <!-- Tableau Extensions API (너가 쓰던 방식 유지: lib 경로) -->
-    <script src="lib/tableau.extensions.1.latest.min.js"></script>
+    <!-- flatpickr (로컬: docs/lib) -->
+    <link rel="stylesheet" href="docs/lib/flatpickr.min.css" />
 
-    <!-- Flatpickr (이미 분리해뒀다고 했으니 경로만 맞추면 됨) -->
-    <link rel="stylesheet" href="lib/flatpickr/flatpickr.min.css" />
-    <script src="lib/flatpickr/flatpickr.min.js"></script>
-
-    <link rel="stylesheet" href="styles.css" />
+    <!-- 너 styles.css -->
+    <link rel="stylesheet" href="./styles.css?v=20260305_10" />
   </head>
 
   <body>
-    <div class="root">
-      <div class="topbar">
-        <div class="title">조회기간</div>
-
-        <!-- authoring에서만 표시 -->
-        <button id="settingsBtn" class="iconBtn" type="button" aria-label="설정">
-          ⚙
-        </button>
+    <!-- 480x60 클릭 영역 -->
+    <div id="rangeBar" class="rangeBar" role="button" tabindex="0">
+      <div class="rangeCol">
+        <div class="k">시작날짜</div>
+        <div class="v" id="startText">-</div>
       </div>
 
-      <div class="row">
-        <div class="label">시작일</div>
-        <input id="startInput" class="input" type="text" placeholder="날짜 선택" />
+      <div class="divider"></div>
+
+      <div class="rangeCol">
+        <div class="k">종료날짜</div>
+        <div class="v" id="endText">-</div>
       </div>
 
-      <div class="row" id="endRow">
-        <div class="label">종료일</div>
-        <input id="endInput" class="input" type="text" placeholder="날짜 선택" />
-      </div>
-
-      <div class="actions">
-        <button id="applyBtn" class="btn primary" type="button">적용</button>
-        <button id="closeBtn" class="btn" type="button">닫기</button>
-      </div>
-
-      <div id="hint" class="hint"></div>
+      <!-- authoring에서만 설정 버튼 (작게) -->
+      <button id="settingsBtn" class="settingsBtn" type="button" aria-label="설정">⚙</button>
     </div>
 
-    <script src="main.js"></script>
+    <!-- flatpickr가 붙을 실제 input (화면에는 안 보이게) -->
+    <input id="fpHidden" class="fpHidden" type="text" />
+
+    <div id="hint" class="hint"></div>
+
+    <!-- flatpickr (로컬: docs/lib) -->
+    <script src="docs/lib/flatpickr.min.js"></script>
+
+    <!-- Tableau Extensions API (하나만) -->
+    <script src="https://extensions.tableauusercontent.com/resources/tableau.extensions.1.latest.min.js"></script>
+
+    <script src="./main.js?v=20260305_10"></script>
   </body>
 </html>
