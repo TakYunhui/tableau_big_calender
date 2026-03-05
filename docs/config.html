@@ -1,47 +1,159 @@
-<!doctype html>
-<html lang="ko">
-<head>
-  <meta charset="utf-8" />
-  <meta name="viewport" content="width=device-width, initial-scale=1" />
-  <title>조회기간 설정</title>
+/* global tableau */
 
-  <!-- 설정창은 flatpickr 필요 없음 -->
-  <link rel="stylesheet" href="./styles.css?v=20260305_9" />
-</head>
-<body class="cfgPage">
-  <div class="cfgPageWrap">
-    <div class="cfgHeader">
-      <div class="cfgTitle">대시보드 날짜 파라미터 매핑</div>
-      <div class="cfgSub" id="cfgDashName">-</div>
-    </div>
+const SETTINGS_KEYS = {
+  kind: "date_kind", // "range" | "single"
+  startParam: "date_start_param",
+  endParam: "date_end_param",
+  format: "date_format",
+};
 
-    <div class="cfgBody">
-      <div class="cfgRow">
-        <label class="cfgLabel" for="selStart">시작일 파라미터</label>
-        <select id="selStart" class="cfgSelect"></select>
-      </div>
+const DEFAULTS = {
+  kind: "range",
+  format: "Y-m-d",
+};
 
-      <div class="cfgRow" id="rowEnd">
-        <label class="cfgLabel" for="selEnd">종료일 파라미터</label>
-        <select id="selEnd" class="cfgSelect"></select>
-      </div>
+function qs(id) {
+  return document.getElementById(id);
+}
+function setHint(msg) {
+  const el = qs("cfgHint");
+  if (el) el.textContent = msg || "";
+}
 
-      <div class="cfgRow cfgRowInline">
-        <input id="chkSingle" type="checkbox" />
-        <label for="chkSingle">단일 날짜(시작=종료)로 사용</label>
-      </div>
+function setEndRowVisible(isVisible) {
+  const row = qs("rowEnd");
+  if (row) row.style.display = isVisible ? "" : "none";
+}
 
-      <div class="cfgHint" id="cfgHint"></div>
-    </div>
+function readCurrentSettings() {
+  const s = tableau.extensions.settings;
+  return {
+    kind: s.get(SETTINGS_KEYS.kind) || DEFAULTS.kind,
+    startParam: s.get(SETTINGS_KEYS.startParam) || "",
+    endParam: s.get(SETTINGS_KEYS.endParam) || "",
+    format: s.get(SETTINGS_KEYS.format) || DEFAULTS.format,
+  };
+}
 
-    <div class="cfgFooter">
-      <button class="btn ghost" id="btnCfgCancel" type="button">닫기</button>
-      <button class="btn primary" id="btnCfgSave" type="button">저장</button>
-    </div>
-  </div>
+async function getDashboard() {
+  return tableau.extensions.dashboardContent.dashboard;
+}
 
-  <!-- Extensions API: 이것도 한 번만 -->
-  <script src="https://extensions.tableauusercontent.com/resources/tableau.extensions.1.latest.min.js"></script>
-  <script src="./config.js?v=20260305_9"></script>
-</body>
-</html>
+function detectType(p) {
+  return (p?.dataType || p?.parameterType || p?.type || "").toString();
+}
+
+function isDateLike(p) {
+  const t = detectType(p).toLowerCase();
+  if (!t) return false;
+  return t.includes("date"); // date/datetime 모두 포함
+}
+
+function fillSelect(selectEl, items, selectedValue) {
+  selectEl.innerHTML = "";
+
+  const empty = document.createElement("option");
+  empty.value = "";
+  empty.textContent = "선택";
+  selectEl.appendChild(empty);
+
+  items.forEach((it) => {
+    const opt = document.createElement("option");
+    opt.value = it.name;
+    opt.textContent = it.label;
+    selectEl.appendChild(opt);
+  });
+
+  if (selectedValue) selectEl.value = selectedValue;
+}
+
+async function loadParameterItems() {
+  const dash = await getDashboard();
+  const params = await dash.getParametersAsync();
+
+  // 1) 타입이 보이면 Date/DateTime만 필터
+  const dateParams = params.filter(isDateLike);
+
+  // 2) 타입 정보를 못 읽거나 필터 결과가 0이면: 전체 노출 + 타입 라벨로 구분
+  const use = dateParams.length > 0 ? dateParams : params;
+
+  return use
+    .map((p) => {
+      const t = detectType(p);
+      return {
+        name: p.name,
+        label: t ? `${p.name} (${t})` : p.name,
+      };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+async function init() {
+  await tableau.extensions.initializeDialogAsync();
+
+  const dash = await getDashboard();
+  const dashNameEl = qs("cfgDashName");
+  if (dashNameEl) dashNameEl.textContent = dash?.name || "-";
+
+  const items = await loadParameterItems();
+  const cur = readCurrentSettings();
+
+  const kindSel = qs("kind");
+  const startSel = qs("startParam");
+  const endSel = qs("endParam");
+  const formatInput = qs("format");
+  const saveBtn = qs("saveBtn");
+  const cancelBtn = qs("cancelBtn");
+
+  if (kindSel) kindSel.value = cur.kind;
+  if (formatInput) formatInput.value = cur.format;
+
+  if (startSel) fillSelect(startSel, items, cur.startParam);
+  if (endSel) fillSelect(endSel, items, cur.endParam);
+
+  setEndRowVisible(cur.kind !== "single");
+
+  if (kindSel) {
+    kindSel.addEventListener("change", () => {
+      setEndRowVisible(kindSel.value !== "single");
+    });
+  }
+
+  if (cancelBtn) {
+    cancelBtn.addEventListener("click", () => {
+      tableau.extensions.ui.closeDialog("cancel");
+    });
+  }
+
+  if (saveBtn) {
+    saveBtn.addEventListener("click", async () => {
+      try {
+        setHint("");
+
+        const kind = kindSel ? kindSel.value : DEFAULTS.kind;
+        const startParam = startSel ? startSel.value : "";
+        const endParam = endSel ? endSel.value : "";
+        const format = (formatInput ? formatInput.value : DEFAULTS.format).trim() || DEFAULTS.format;
+
+        if (!startParam) throw new Error("시작일 파라미터를 선택하세요.");
+        if (kind === "range" && !endParam) throw new Error("종료일 파라미터를 선택하세요.");
+
+        const s = tableau.extensions.settings;
+        s.set(SETTINGS_KEYS.kind, kind);
+        s.set(SETTINGS_KEYS.startParam, startParam);
+        s.set(SETTINGS_KEYS.endParam, kind === "single" ? "" : endParam);
+        s.set(SETTINGS_KEYS.format, format);
+
+        await s.saveAsync();
+        tableau.extensions.ui.closeDialog("saved");
+      } catch (e) {
+        setHint(e?.message || String(e));
+      }
+    });
+  }
+}
+
+init().catch((e) => {
+  console.error(e);
+  setHint(e?.message || String(e));
+});
