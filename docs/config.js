@@ -1,7 +1,7 @@
 /* global tableau */
 
 const SETTINGS_KEYS = {
-  kind: "date_kind",          // "range" | "single"
+  kind: "date_kind",
   startParam: "date_start_param",
   endParam: "date_end_param",
   format: "date_format",
@@ -26,28 +26,15 @@ function setEndRowVisible(isVisible) {
   if (row) row.style.display = isVisible ? "" : "none";
 }
 
-function readCurrentSettings() {
-  const s = tableau.extensions.settings;
-  return {
-    kind: s.get(SETTINGS_KEYS.kind) || DEFAULTS.kind,
-    startParam: s.get(SETTINGS_KEYS.startParam) || "",
-    endParam: s.get(SETTINGS_KEYS.endParam) || "",
-    format: s.get(SETTINGS_KEYS.format) || DEFAULTS.format,
-  };
-}
-
-async function getDashboard() {
-  return tableau.extensions.dashboardContent.dashboard;
-}
-
 function detectType(p) {
   return (p?.dataType || p?.parameterType || p?.type || "").toString();
 }
 
 function isDateLike(p) {
   const t = detectType(p).toLowerCase();
+  // 타입을 못 읽으면 false 처리 -> "날짜/시간만 노출" 요구사항을 지키기 위해
   if (!t) return false;
-  return t.includes("date"); // date/datetime 모두 포함
+  return t.includes("date"); // date/datetime
 }
 
 function fillSelect(selectEl, items, selectedValue) {
@@ -68,17 +55,28 @@ function fillSelect(selectEl, items, selectedValue) {
   if (selectedValue) selectEl.value = selectedValue;
 }
 
-async function loadParameterItems() {
+function readCurrentSettings() {
+  const s = tableau.extensions.settings;
+  return {
+    kind: s.get(SETTINGS_KEYS.kind) || DEFAULTS.kind,
+    startParam: s.get(SETTINGS_KEYS.startParam) || "",
+    endParam: s.get(SETTINGS_KEYS.endParam) || "",
+    format: s.get(SETTINGS_KEYS.format) || DEFAULTS.format,
+  };
+}
+
+async function getDashboard() {
+  return tableau.extensions.dashboardContent.dashboard;
+}
+
+async function loadDateParameterItems() {
   const dash = await getDashboard();
   const params = await dash.getParametersAsync();
 
-  // 1) Date/DateTime만 우선 추리기
   const dateParams = params.filter(isDateLike);
 
-  // 2) 타입 정보를 못 읽거나(혹은 0개)면 전체 노출 + 라벨 표시
-  const use = dateParams.length > 0 ? dateParams : params;
-
-  return use
+  // "날짜/시간만" 요구사항 고정: 0개면 사용자에게 알려줌
+  return dateParams
     .map((p) => {
       const t = detectType(p);
       return { name: p.name, label: t ? `${p.name} (${t})` : p.name };
@@ -93,15 +91,17 @@ async function init() {
   const dashNameEl = qs("cfgDashName");
   if (dashNameEl) dashNameEl.textContent = dash?.name || "-";
 
-  const items = await loadParameterItems();
+  const items = await loadDateParameterItems();
+  if (items.length === 0) {
+    setHint("날짜/시간 타입 파라미터를 찾지 못했습니다. 대시보드 파라미터 타입을 확인하세요.");
+  }
+
   const cur = readCurrentSettings();
 
   const kindSel = qs("kind");
   const startSel = qs("startParam");
   const endSel = qs("endParam");
   const formatInput = qs("format");
-  const saveBtn = qs("saveBtn");
-  const cancelBtn = qs("cancelBtn");
 
   if (kindSel) kindSel.value = cur.kind;
   if (formatInput) formatInput.value = cur.format;
@@ -112,19 +112,19 @@ async function init() {
   setEndRowVisible(cur.kind !== "single");
 
   if (kindSel) {
-    kindSel.addEventListener("change", () => {
+    kindSel.onchange = () => {
       setEndRowVisible(kindSel.value !== "single");
-    });
+    };
   }
 
+  const cancelBtn = qs("cancelBtn");
   if (cancelBtn) {
-    cancelBtn.addEventListener("click", () => {
-      tableau.extensions.ui.closeDialog("cancel");
-    });
+    cancelBtn.onclick = () => tableau.extensions.ui.closeDialog("cancel");
   }
 
+  const saveBtn = qs("saveBtn");
   if (saveBtn) {
-    saveBtn.addEventListener("click", async () => {
+    saveBtn.onclick = async () => {
       try {
         setHint("");
 
@@ -147,7 +147,7 @@ async function init() {
       } catch (e) {
         setHint(e?.message || String(e));
       }
-    });
+    };
   }
 }
 
