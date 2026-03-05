@@ -1,179 +1,168 @@
-/* app.js */
-
-const DEFAULT_CONFIG = {
-  mode: "range",               // "range" | "single"
-  paramStartName: "조회시작일",
-  paramEndName: "조회종료일",
-  dateFormat: "Y-m-d",
-};
-
-let cfg = { ...DEFAULT_CONFIG };
-let fp = null;
-
-let startDate = null;
-let endDate = null;
-
-function pad2(n){ return String(n).padStart(2, "0"); }
-function fmtDate(d){
-  if(!d) return "-";
-  return `${d.getFullYear()}-${pad2(d.getMonth()+1)}-${pad2(d.getDate())}`;
-}
-function setStatus(msg){
-  document.getElementById("statusText").textContent = msg || "";
-}
-
-function renderSummary(){
+(function () {
+  const app = document.getElementById("app");
   const rangeText = document.getElementById("rangeText");
-  if (cfg.mode === "single") {
-    rangeText.textContent = startDate ? fmtDate(startDate) : "-";
-  } else {
-    const s = startDate ? fmtDate(startDate) : "-";
-    const e = endDate ? fmtDate(endDate) : "-";
-    rangeText.textContent = `${s} ~ ${e}`;
-  }
-}
+  const startText = document.getElementById("startText");
+  const endText = document.getElementById("endText");
+  const statusEl = document.getElementById("status");
 
-function renderSide(){
-  document.getElementById("startText").textContent = fmtDate(startDate);
-  document.getElementById("endText").textContent = (cfg.mode === "single") ? "-" : fmtDate(endDate);
-}
+  const btnEdit = document.getElementById("btnEdit");
+  const btnApply = document.getElementById("btnApply");
+  const btnClose = document.getElementById("btnClose");
 
-function openEditor(){
-  const app = document.getElementById("app");
-  app.classList.remove("mode-summary");
-  app.classList.add("mode-edit");
-  setStatus("");
-}
-
-function closeEditor(){
-  const app = document.getElementById("app");
-  app.classList.remove("mode-edit");
-  app.classList.add("mode-summary");
-  renderSummary(); // 닫힐 때 조회기간 다시 표시
-}
-
-/**
- * Tableau 파라미터 적용
- */
-async function applyToTableau(){
-  if (!window.tableau || !tableau.extensions || !tableau.extensions.dashboardContent) {
-    setStatus("Tableau 연결 없음(로컬 테스트)");
-    return;
-  }
-
-  const dashboard = tableau.extensions.dashboardContent.dashboard;
-  const params = await dashboard.getParametersAsync();
-
-  const findParam = (name) => params.find(p => p.name === name);
-
-  const pStart = findParam(cfg.paramStartName);
-  const pEnd   = (cfg.mode === "single") ? null : findParam(cfg.paramEndName);
-
-  if (!pStart) throw new Error(`시작 파라미터 없음: ${cfg.paramStartName}`);
-  if (cfg.mode !== "single" && !pEnd) throw new Error(`종료 파라미터 없음: ${cfg.paramEndName}`);
-
-  if (!startDate) throw new Error("시작일이 선택되지 않았습니다.");
-  if (cfg.mode !== "single" && !endDate) throw new Error("종료일이 선택되지 않았습니다.");
-
-  await pStart.changeValueAsync(fmtDate(startDate));
-  if (cfg.mode !== "single") {
-    await pEnd.changeValueAsync(fmtDate(endDate));
-  }
-}
-
-/**
- * ✅ “닫기 기능 추가”
- * - 너가 말한 팝오버/다이얼로그가 tableau displayDialogAsync 기반이면 closeDialog가 맞고
- * - 인라인이면 closeEditor로 충분
- * 여기서는 둘 다 안전하게 처리.
- */
-function closeTableauDialogIfAny(){
+  // ----------------------------
+  // 0) 대시보드 배경색 맞추기(눈속임 품질 핵심)
+  //   - URL: .../index.html?bg=#F4F4F4
+  // ----------------------------
   try {
-    if (tableau?.extensions?.ui?.closeDialog) {
-      tableau.extensions.ui.closeDialog("applied");
+    const params = new URLSearchParams(location.search);
+    const bg = params.get("bg");
+    if (bg) {
+      document.documentElement.style.setProperty("--dash-bg", decodeURIComponent(bg));
+      document.body.style.background = "transparent"; // body 투명 유지
     }
-  } catch (_) {
-    // ignore
+  } catch (_) {}
+
+  // ----------------------------
+  // 1) 상태/모드
+  // ----------------------------
+  let mode = "summary"; // summary | edit
+  let selectedStart = null;
+  let selectedEnd = null;
+  let fp = null;
+
+  function setMode(next) {
+    mode = next;
+    app.classList.toggle("mode-summary", mode === "summary");
+    app.classList.toggle("mode-edit", mode === "edit");
   }
-}
 
-function initFlatpickr(){
-  const ko = (window.flatpickr && flatpickr.l10ns && flatpickr.l10ns.ko) ? flatpickr.l10ns.ko : undefined;
-
-  // 기존 인스턴스가 있으면 제거
-  if (fp) {
-    fp.destroy();
-    fp = null;
+  function fmt(d) {
+    if (!d) return "-";
+    const yyyy = d.getFullYear();
+    const mm = String(d.getMonth() + 1).padStart(2, "0");
+    const dd = String(d.getDate()).padStart(2, "0");
+    return `${yyyy}-${mm}-${dd}`;
   }
 
-  fp = flatpickr("#fp", {
-    mode: (cfg.mode === "single") ? "single" : "range",
-    inline: true,
-    showMonths: 1,
-    dateFormat: cfg.dateFormat,
-    locale: ko,
-    defaultDate: (cfg.mode === "single")
-      ? (startDate ? [startDate] : null)
-      : ((startDate && endDate) ? [startDate, endDate] : null),
-    onChange: (selectedDates) => {
-      if (cfg.mode === "single") {
-        startDate = selectedDates[0] || null;
-        endDate = null;
-      } else {
-        startDate = selectedDates[0] || null;
-        endDate   = selectedDates[1] || null;
+  function renderTexts() {
+    startText.textContent = fmt(selectedStart);
+    endText.textContent = fmt(selectedEnd);
+
+    if (selectedStart && selectedEnd) {
+      rangeText.textContent = `조회기간: ${fmt(selectedStart)} ~ ${fmt(selectedEnd)}`;
+    } else if (selectedStart && !selectedEnd) {
+      rangeText.textContent = `조회기간: ${fmt(selectedStart)} ~ ${fmt(selectedStart)}`;
+    } else {
+      rangeText.textContent = `조회기간: -`;
+    }
+  }
+
+  function setStatus(msg) {
+    statusEl.textContent = msg || " ";
+  }
+
+  // ----------------------------
+  // 2) flatpickr (inline range)
+  // ----------------------------
+  function ensureFlatpickr() {
+    if (fp) return;
+
+    const input = document.getElementById("fp");
+    fp = flatpickr(input, {
+      mode: "range",
+      inline: true,
+      locale: (window.flatpickr && window.flatpickr.l10ns && window.flatpickr.l10ns.ko) ? "ko" : undefined,
+      dateFormat: "Y-m-d",
+      defaultDate: [],
+      onChange: (dates) => {
+        // range: [start, end]
+        selectedStart = dates[0] || null;
+        selectedEnd = dates[1] || null;
+
+        // end가 아직 없으면 start로 임시 표기(사용자 혼란 방지)
+        renderTexts();
       }
-      renderSide();
-    }
-  });
-}
-
-function bindEvents(){
-  document.getElementById("btnEdit").addEventListener("click", openEditor);
-
-  document.getElementById("btnClose").addEventListener("click", () => {
-    closeEditor();
-    setStatus("");
-  });
-
-  document.getElementById("btnApply").addEventListener("click", async () => {
-    try {
-      setStatus("적용 중...");
-      await applyToTableau();
-
-      // ✅ 적용 완료 후: 편집 화면 닫고(조회기간 다시 표시)
-      closeEditor();
-      setStatus("적용 완료");
-
-      // ✅ tableau 다이얼로그/팝오버로 띄운 구성이라면 자동 닫기
-      closeTableauDialogIfAny();
-    } catch (e) {
-      setStatus(String(e?.message || e));
-    }
-  });
-}
-
-async function bootstrap(){
-  bindEvents();
-
-  // 초기값: 오늘~오늘
-  const today = new Date();
-  startDate = today;
-  endDate = (cfg.mode === "single") ? null : today;
-
-  renderSummary();
-  renderSide();
-  initFlatpickr();
-
-  // Tableau 초기화는 가능하면 시도
-  try {
-    if (window.tableau && tableau.extensions) {
-      await tableau.extensions.initializeAsync();
-      setStatus("");
-    }
-  } catch (_) {
-    setStatus("Tableau 초기화 실패(로컬 테스트일 수 있음)");
+    });
   }
-}
 
-bootstrap();
+  // ----------------------------
+  // 3) Tableau 파라미터 적용 (있으면 적용, 없으면 무시)
+  //    - 네 기존 코드에서 파라미터 이름만 맞춰서 연결하면 됨
+  // ----------------------------
+  async function applyToTableau(start, end) {
+    try {
+      if (!window.tableau || !tableau.extensions) return;
+
+      // 초기화 안 됐으면 시도
+      if (!tableau.extensions.dashboardContent) {
+        await tableau.extensions.initializeAsync();
+      }
+
+      const dashboard = tableau.extensions.dashboardContent.dashboard;
+      const params = await dashboard.getParametersAsync();
+
+      // ✅ 여기 파라미터 이름을 네 환경에 맞춰 바꿔
+      const START_PARAM = "P_시작일";
+      const END_PARAM = "P_종료일";
+
+      const pStart = params.find(p => p.name === START_PARAM);
+      const pEnd = params.find(p => p.name === END_PARAM);
+
+      const startStr = fmt(start);
+      const endStr = fmt(end || start);
+
+      if (pStart) await pStart.changeValueAsync(startStr);
+      if (pEnd) await pEnd.changeValueAsync(endStr);
+
+      setStatus(`적용됨: ${startStr} ~ ${endStr}`);
+    } catch (e) {
+      // Tableau 환경/권한/파라미터명 불일치 등
+      setStatus(`적용 실패(파라미터/권한 확인): ${String(e).slice(0, 120)}`);
+    }
+  }
+
+  // ----------------------------
+  // 4) 버튼 동작
+  // ----------------------------
+  btnEdit.addEventListener("click", () => {
+    ensureFlatpickr();
+    setMode("edit");
+
+    // 편집 진입 시 기존 선택이 있으면 캘린더에도 반영
+    if (fp) {
+      const ds = [];
+      if (selectedStart) ds.push(selectedStart);
+      if (selectedEnd) ds.push(selectedEnd);
+      if (ds.length) fp.setDate(ds, false);
+    }
+
+    setStatus("기간을 선택 후 [적용]하세요.");
+  });
+
+  btnClose.addEventListener("click", () => {
+    // 취소: 선택 유지할지/롤백할지 결정 가능. 지금은 유지.
+    setMode("summary");
+    renderTexts();
+    setStatus(" ");
+  });
+
+  btnApply.addEventListener("click", async () => {
+    if (!selectedStart) {
+      setStatus("시작일을 먼저 선택하세요.");
+      return;
+    }
+    if (!selectedEnd) selectedEnd = selectedStart;
+
+    renderTexts();
+    await applyToTableau(selectedStart, selectedEnd);
+
+    setMode("summary");
+  });
+
+  // ----------------------------
+  // 5) 초기 렌더
+  // ----------------------------
+  renderTexts();
+  setStatus(" ");
+  setMode("summary");
+})();
