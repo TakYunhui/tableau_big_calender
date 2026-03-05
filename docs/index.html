@@ -1,47 +1,44 @@
 <!doctype html>
 <html lang="ko">
-  <head>
-    <meta charset="utf-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1" />
-    <title>Date UI</title>
+<head>
+  <meta charset="utf-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1" />
+  <title>조회기간</title>
 
-    <!-- flatpickr (로컬: docs/lib) -->
-    <link rel="stylesheet" href="./lib/flatpickr.min.css" />
+  <!-- flatpickr (docs가 루트이므로 ./lib) -->
+  <link rel="stylesheet" href="./lib/flatpickr.min.css" />
 
-    <!-- 너 styles.css -->
-    <link rel="stylesheet" href="./styles.css?v=20260305_10" />
-  </head>
+  <link rel="stylesheet" href="./styles.css?v=20260305_20" />
+</head>
 
-  <body>
-    <!-- 480x60 클릭 영역 -->
-    <div id="rangeBar" class="rangeBar" role="button" tabindex="0">
-      <div class="rangeCol">
-        <div class="k">시작날짜</div>
-        <div class="v" id="startText">-</div>
-      </div>
+<body>
+  <!-- 480x60 클릭 영역 -->
+  <div id="rangeBar" class="rangeBar">
+    <div class="rangeLine">
+      <span class="label">시작날짜</span>
+      <span class="value" id="startText">-</span>
 
-      <div class="divider"></div>
+      <span class="sep">|</span>
 
-      <div class="rangeCol">
-        <div class="k">종료날짜</div>
-        <div class="v" id="endText">-</div>
-      </div>
-
-      <!-- authoring에서만 설정 버튼 (작게) -->
-      <button id="settingsBtn" class="settingsBtn" type="button" aria-label="설정">⚙</button>
+      <span class="label">종료날짜</span>
+      <span class="value" id="endText">-</span>
     </div>
 
-    <!-- flatpickr가 붙을 실제 input (화면에는 안 보이게) -->
-    <input id="fpHidden" class="fpHidden" type="text" />
+    <!-- authoring에서만 표시 -->
+    <button id="settingsBtn" class="settingsBtn" type="button" aria-label="설정">⚙</button>
+  </div>
 
-    <div id="hint" class="hint"></div>
+  <!-- flatpickr가 붙는 실제 input(숨김) -->
+  <input id="fpHidden" class="fpHidden" type="text" />
 
-    <!-- flatpickr (로컬: docs/lib) -->
-    <script src="./lib/flatpickr.min.js"></script>
+  <div id="hint" class="hint"></div>
 
-    <!-- Tableau Extensions API (하나만) -->
-    <script src="https://extensions.tableauusercontent.com/resources/tableau.extensions.1.latest.min.js"></script>
+  <!-- flatpickr (docs가 루트이므로 ./lib) -->
+  <script src="./lib/flatpickr.min.js"></script>
 
-    <script src="./main.js?v=20260305_10"></script>
-  </body>
+  <!-- Tableau Extensions API (1개만) -->
+  <script src="https://extensions.tableauusercontent.com/resources/tableau.extensions.1.latest.min.js"></script>
+
+  <script src="./main.js?v=20260305_20"></script>
+</body>
 </html>
