@@ -1,6 +1,7 @@
-/* =========================
-   0) 레이아웃 고정
-   ========================= */
+:root{
+  --dash-bg: transparent;
+}
+
 html, body {
   width: 100% !important;
   height: 100% !important;
@@ -13,9 +14,6 @@ html, body {
 }
 body { display: flex; }
 
-/* =========================
-   1) 480x200 고정 컨테이너
-   ========================= */
 #app {
   width: 480px;
   height: 200px;
@@ -26,9 +24,7 @@ body { display: flex; }
   flex-direction: column;
 }
 
-/* =========================
-   2) Topbar
-   ========================= */
+/* Topbar */
 .topbar {
   height: 36px;
   display: flex;
@@ -45,7 +41,7 @@ body { display: flex; }
   white-space: nowrap;
   overflow: hidden;
   text-overflow: ellipsis;
-  max-width: 330px;
+  max-width: 220px;
 }
 
 .btnRow { display: flex; gap: 6px; }
@@ -64,9 +60,7 @@ body { display: flex; }
 .btn.primary { background: rgba(255,255,255,0.95); font-weight: 600; }
 .btn.ghost { background: rgba(255,255,255,0.0); }
 
-/* =========================
-   3) status
-   ========================= */
+/* status */
 .status {
   flex: 0 0 24px;
   font-size: 11px;
@@ -78,9 +72,87 @@ body { display: flex; }
   text-overflow: ellipsis;
 }
 
-/* =========================
-   4) 달력 모달
-   ========================= */
+/* ===== 설정 모달 ===== */
+.cfgModal{
+  position: absolute;
+  inset: 0;
+  display: none;
+  padding: 6px 10px;
+  box-sizing: border-box;
+  background: transparent;
+  z-index: 50;
+}
+.cfgBox{
+  width: 100%;
+  height: 100%;
+  border-radius: 12px;
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0,0,0,0.12);
+  overflow: hidden;
+  display: flex;
+  flex-direction: column;
+}
+.cfgHeader{
+  padding: 10px 10px 6px;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+}
+.cfgTitle{
+  font-size: 13px;
+  font-weight: 700;
+}
+.cfgSub{
+  font-size: 11px;
+  opacity: 0.7;
+  margin-top: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.cfgBody{
+  flex: 1;
+  padding: 10px;
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  overflow: hidden;
+}
+.cfgRow{
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+.cfgRowInline{
+  flex-direction: row;
+  align-items: center;
+  gap: 8px;
+}
+.cfgLabel{
+  font-size: 11px;
+  opacity: 0.75;
+}
+.cfgSelect{
+  height: 28px;
+  border: 1px solid rgba(0,0,0,0.18);
+  border-radius: 8px;
+  padding: 0 8px;
+  font-size: 12px;
+  background: rgba(255,255,255,0.95);
+}
+.cfgHint{
+  font-size: 11px;
+  opacity: 0.7;
+  line-height: 1.25;
+  margin-top: 2px;
+}
+.cfgFooter{
+  padding: 8px 10px;
+  border-top: 1px solid rgba(0,0,0,0.08);
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+}
+
+/* ===== 달력 모달 ===== */
 .calModal{
   flex: 1;
   padding: 6px 10px;
@@ -90,13 +162,12 @@ body { display: flex; }
   display: none;
 }
 
-/* ✅ 핵심: 박스 배경도 투명으로(흰색 제거) */
 .calBox{
   width: 100%;
   height: 100%;
   border-radius: 12px;
-  background: transparent !important;   /* <- 변경 */
-  border: 1px solid rgba(0,0,0,0.12);   /* 테두리는 남김(원하면 제거 가능) */
+  background: rgba(255,255,255,0.92);
+  border: 1px solid rgba(0,0,0,0.12);
   box-sizing: border-box;
   overflow: hidden;
 }
@@ -110,7 +181,6 @@ body { display: flex; }
   overflow: hidden;
 }
 
-/* 달력 영역 */
 .calWrap {
   flex: 0 0 332px;
   overflow: hidden;
@@ -119,7 +189,6 @@ body { display: flex; }
   position: relative;
 }
 
-/* input 숨김 */
 .fpInput {
   position: absolute;
   opacity: 0;
@@ -128,9 +197,7 @@ body { display: flex; }
   height: 0;
 }
 
-/* =========================
-   5) flatpickr 흰 배경/그림자 완전 제거
-   ========================= */
+/* flatpickr 배경 강제 제거 */
 .flatpickr-calendar,
 .flatpickr-calendar.open,
 .flatpickr-calendar.inline,
@@ -144,19 +211,15 @@ body { display: flex; }
   background: transparent !important;
   box-shadow: none !important;
 }
-
 .flatpickr-calendar {
   border: 0 !important;
   margin: 0 !important;
 }
-
-/* 화살표(삼각형) 제거 */
 .flatpickr-calendar.arrowTop:after { border-bottom-color: transparent !important; }
 .flatpickr-calendar.arrowBottom:after { border-top-color: transparent !important; }
 .flatpickr-calendar.arrowTop:before { border-bottom-color: transparent !important; }
 .flatpickr-calendar.arrowBottom:before { border-top-color: transparent !important; }
 
-/* 잘림 대응: scale */
 .calWrap .flatpickr-calendar {
   transform: scale(0.86);
   transform-origin: top left;
@@ -168,9 +231,7 @@ body { display: flex; }
   min-height: 0 !important;
 }
 
-/* =========================
-   6) Side Panel
-   ========================= */
+/* Side panel */
 .side {
   flex: 1;
   min-width: 120px;
@@ -196,7 +257,6 @@ body { display: flex; }
   overflow: hidden;
   text-overflow: ellipsis;
 }
-
 .hint {
   font-size: 11px;
   opacity: 0.65;
@@ -210,9 +270,7 @@ body { display: flex; }
   pointer-events: none;
 }
 
-/* =========================
-   7) 모드 전환
-   ========================= */
+/* 모드 */
 .mode-summary .calModal { display: none; }
 .mode-edit .calModal { display: block; }
 
