@@ -5,41 +5,32 @@
   <meta name="viewport" content="width=device-width, initial-scale=1" />
   <title>조회기간</title>
 
-  <!-- flatpickr (docs가 루트이므로 ./lib) -->
   <link rel="stylesheet" href="./lib/flatpickr.min.css" />
-
-  <link rel="stylesheet" href="./styles.css?v=20260305_20" />
+  <link rel="stylesheet" href="./styles.css?v=20260305_30" />
 </head>
 
 <body>
-  <!-- 480x60 클릭 영역 -->
-  <div class="rangeLine">
-    <span class="label">시작날짜</span>
-    <span class="param" id="startParamName">-</span>
-    <span class="value" id="startText">-</span>
+  <div id="rangeBar" class="rangeBar">
+    <div class="rangeLine">
+      <span class="label">시작날짜</span>
+      <span class="param" id="startParamName">-</span>
+      <span class="value" id="startText">-</span>
 
-    <span class="sep">|</span>
+      <span class="sep">|</span>
 
-    <span class="label">종료날짜</span>
-    <span class="param" id="endParamName">-</span>
-    <span class="value" id="endText">-</span>
-  </div>
+      <span class="label">종료날짜</span>
+      <span class="param" id="endParamName">-</span>
+      <span class="value" id="endText">-</span>
+    </div>
 
-    <!-- authoring에서만 표시 -->
     <button id="settingsBtn" class="settingsBtn" type="button" aria-label="설정">⚙</button>
   </div>
 
-  <!-- flatpickr가 붙는 실제 input(숨김) -->
   <input id="fpHidden" class="fpHidden" type="text" />
-
   <div id="hint" class="hint"></div>
 
-  <!-- flatpickr (docs가 루트이므로 ./lib) -->
   <script src="./lib/flatpickr.min.js"></script>
-
-  <!-- Tableau Extensions API (1개만) -->
   <script src="https://extensions.tableauusercontent.com/resources/tableau.extensions.1.latest.min.js"></script>
-
-  <script src="./main.js?v=20260305_20"></script>
+  <script src="./main.js?v=20260305_30"></script>
 </body>
 </html>
