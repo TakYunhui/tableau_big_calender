@@ -8,7 +8,8 @@
   <!-- flatpickr css -->
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/flatpickr/dist/flatpickr.min.css"/>
 
-  <link rel="stylesheet" href="./styles.css" />
+  <!-- ✅ 내 CSS가 flatpickr 뒤에 와야 덮어씀 -->
+  <link rel="stylesheet" href="./styles.css?v=20260305_2" />
 </head>
 <body>
   <div id="app" class="mode-summary">
@@ -26,7 +27,7 @@
     <!-- status (summary에서도 보여서 전체가 60px 느낌 유지) -->
     <div class="status" id="status"> </div>
 
-    <!-- ✅ (중요) 달력 모달: edit 모드에서만 표시 -->
+    <!-- ✅ 달력 모달: edit 모드에서만 표시 -->
     <div class="calModal" id="calModal">
       <!-- ✅ 박스만 배경 -->
       <div class="calBox">
@@ -50,7 +51,7 @@
       </div>
     </div>
 
-    <!-- ✅ 눈속임 filler: summary 모드에서 남는 영역은 투명(또는 배경 매칭용으로 변경 가능) -->
+    <!-- ✅ 눈속임 filler: summary 모드에서 남는 영역 -->
     <div class="filler" aria-hidden="true"></div>
   </div>
 
@@ -58,9 +59,9 @@
   <script src="https://cdn.jsdelivr.net/npm/flatpickr"></script>
   <script src="https://cdn.jsdelivr.net/npm/flatpickr/dist/l10n/ko.js"></script>
 
-  <!-- tableau extension api (Tableau에서만 존재. 로컬 테스트 시 없어도 try/catch로 통과) -->
+  <!-- tableau extension api -->
   <script src="https://cdn.jsdelivr.net/npm/tableau-api@1.10.0/dist/tableau.extensions.1.latest.min.js"></script>
 
-  <script src="./main.js"></script>
+  <script src="./main.js?v=20260305_2"></script>
 </body>
 </html>
