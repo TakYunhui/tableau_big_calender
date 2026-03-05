@@ -59,11 +59,15 @@ html, body {
   line-height: 1;
 }
 
+/* ✅ 중요: fpHidden을 화면 밖으로 보내지 말 것 (달력도 같이 밖으로 뜸) */
 .fpHidden {
-  position: absolute;
-  left: -9999px;
-  top: -9999px;
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
   opacity: 0;
+  pointer-events: none;
 }
 
 .hint {
@@ -76,11 +80,13 @@ html, body {
 /* ===== 설정 패널(iframe 내부) ===== */
 .cfgPanel {
   width: 480px;
+  height: 200px;           /* ✅ 고정 */
   display: none;
   background: rgba(255,255,255,0.95);
   border-top: 1px solid rgba(0,0,0,0.12);
   padding: 12px;
   box-sizing: border-box;
+  overflow: auto;          /* ✅ 200 안에 스크롤 */
 }
 
 .cfgPanel.open { display: block; }
