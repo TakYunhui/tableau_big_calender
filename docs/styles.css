@@ -1,6 +1,5 @@
 /* =========================
-   0) 레이아웃 고정 (중요)
-   - "빨간 테두리가 세로줄" 문제 해결
+   0) 레이아웃 고정
    ========================= */
 html, body {
   width: 100% !important;
@@ -12,9 +11,7 @@ html, body {
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR",
                "Apple SD Gothic Neo", Arial, sans-serif;
 }
-body {
-  display: flex;
-}
+body { display: flex; }
 
 /* =========================
    1) 480x200 고정 컨테이너
@@ -22,14 +19,11 @@ body {
 #app {
   width: 480px;
   height: 200px;
-  flex: 0 0 480px; /* 가로 줄어듦 방지 */
+  flex: 0 0 480px;
   box-sizing: border-box;
   background: transparent !important;
   display: flex;
   flex-direction: column;
-
-  /* ✅ 디버그용. 확인 끝나면 지워 */
-  outline: 3px solid red !important;
 }
 
 /* =========================
@@ -54,10 +48,7 @@ body {
   max-width: 330px;
 }
 
-.btnRow {
-  display: flex;
-  gap: 6px;
-}
+.btnRow { display: flex; gap: 6px; }
 
 .btn {
   height: 24px;
@@ -74,7 +65,7 @@ body {
 .btn.ghost { background: rgba(255,255,255,0.0); }
 
 /* =========================
-   3) status (상단 60px 느낌 유지)
+   3) status
    ========================= */
 .status {
   flex: 0 0 24px;
@@ -88,9 +79,7 @@ body {
 }
 
 /* =========================
-   4) 달력 모달 (업데이트 팝업 방식)
-   - calModal: 바깥(투명)
-   - calBox: 박스만 배경
+   4) 달력 모달
    ========================= */
 .calModal{
   flex: 1;
@@ -98,25 +87,20 @@ body {
   box-sizing: border-box;
   background: transparent;
   overflow: hidden;
-  display: none; /* summary에서는 숨김 */
+  display: none;
 }
 
+/* ✅ 핵심: 박스 배경도 투명으로(흰색 제거) */
 .calBox{
   width: 100%;
   height: 100%;
   border-radius: 12px;
-
-  /* ✅ 박스만 배경 (원하면 여기 색 바꿔) */
-  background: rgba(255,255,255,0.92);
-
-  border: 1px solid rgba(0,0,0,0.12);
+  background: transparent !important;   /* <- 변경 */
+  border: 1px solid rgba(0,0,0,0.12);   /* 테두리는 남김(원하면 제거 가능) */
   box-sizing: border-box;
   overflow: hidden;
 }
 
-/* =========================
-   5) Editor Area (calBox 안)
-   ========================= */
 .editorArea {
   height: 100%;
   display: flex;
@@ -135,7 +119,7 @@ body {
   position: relative;
 }
 
-/* inline 캘린더 input 숨김 */
+/* input 숨김 */
 .fpInput {
   position: absolute;
   opacity: 0;
@@ -145,9 +129,7 @@ body {
 }
 
 /* =========================
-   6) flatpickr 흰 배경 제거(최우선)
-   - flatpickr.min.css 내부에서 background:#fff가 같은 블록에 2번 선언돼도
-     !important가 최종 승리하게 만든다.
+   5) flatpickr 흰 배경/그림자 완전 제거
    ========================= */
 .flatpickr-calendar,
 .flatpickr-calendar.open,
@@ -163,25 +145,23 @@ body {
   box-shadow: none !important;
 }
 
-/* 테두리 제거 */
 .flatpickr-calendar {
   border: 0 !important;
   margin: 0 !important;
 }
 
-/* 화살표(삼각형) 흰색 제거 */
+/* 화살표(삼각형) 제거 */
 .flatpickr-calendar.arrowTop:after { border-bottom-color: transparent !important; }
 .flatpickr-calendar.arrowBottom:after { border-top-color: transparent !important; }
 .flatpickr-calendar.arrowTop:before { border-bottom-color: transparent !important; }
 .flatpickr-calendar.arrowBottom:before { border-top-color: transparent !important; }
 
-/* ✅ 잘림 대응: scale */
+/* 잘림 대응: scale */
 .calWrap .flatpickr-calendar {
   transform: scale(0.86);
   transform-origin: top left;
 }
 
-/* 내부 높이 최소화 */
 .flatpickr-innerContainer,
 .flatpickr-rContainer,
 .flatpickr-days {
@@ -189,7 +169,7 @@ body {
 }
 
 /* =========================
-   7) Side Panel
+   6) Side Panel
    ========================= */
 .side {
   flex: 1;
@@ -223,9 +203,7 @@ body {
   line-height: 1.2;
 }
 
-/* =========================
-   8) filler (눈속임)
-   ========================= */
+/* filler */
 .filler{
   flex: 1;
   background: transparent;
@@ -233,7 +211,7 @@ body {
 }
 
 /* =========================
-   9) 모드 전환
+   7) 모드 전환
    ========================= */
 .mode-summary .calModal { display: none; }
 .mode-edit .calModal { display: block; }
