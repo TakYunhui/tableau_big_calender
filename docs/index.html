@@ -23,30 +23,34 @@
       </div>
     </div>
 
-    <!-- 편집영역(달력+사이드) : edit 모드에서만 표시 -->
-    <div class="editorArea" id="editorArea">
-      <div class="calWrap">
-        <input id="fp" class="fpInput" />
-        <!-- flatpickr inline calendar가 여기에 붙음 -->
-      </div>
+    <!-- status (summary에서도 보여서 전체가 60px 느낌 유지) -->
+    <div class="status" id="status"> </div>
 
-      <div class="side">
-        <div class="kv">
-          <div class="k">시작</div><div class="v" id="startText">-</div>
-          <div class="k">종료</div><div class="v" id="endText">-</div>
-        </div>
+    <!-- ✅ (중요) 달력 모달: edit 모드에서만 표시 -->
+    <div class="calModal" id="calModal">
+      <!-- ✅ 박스만 배경 -->
+      <div class="calBox">
+        <div class="editorArea" id="editorArea">
+          <div class="calWrap">
+            <input id="fp" class="fpInput" />
+          </div>
 
-        <div class="hint" id="hintText">
-          • 달력에서 기간을 선택한 뒤 [적용]을 누르세요.<br/>
-          • [닫기]는 편집을 취소합니다.
+          <div class="side">
+            <div class="kv">
+              <div class="k">시작</div><div class="v" id="startText">-</div>
+              <div class="k">종료</div><div class="v" id="endText">-</div>
+            </div>
+
+            <div class="hint" id="hintText">
+              • 달력에서 기간을 선택한 뒤 [적용]을 누르세요.<br/>
+              • [닫기]는 편집을 취소합니다.
+            </div>
+          </div>
         </div>
       </div>
     </div>
 
-    <!-- status (summary 모드에서도 보여서 36+24=약 60px 느낌) -->
-    <div class="status" id="status"> </div>
-
-    <!-- ✅ 눈속임 filler: summary 모드에서 남는 140px을 배경색으로 채워 "가림" 티 최소화 -->
+    <!-- ✅ 눈속임 filler: summary 모드에서 남는 영역은 투명(또는 배경 매칭용으로 변경 가능) -->
     <div class="filler" aria-hidden="true"></div>
   </div>
 
