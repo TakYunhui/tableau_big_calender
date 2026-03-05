@@ -20,11 +20,11 @@ function qs(id) {
 }
 
 function setHint(msg) {
-  qs("hint").textContent = msg || "";
+  const el = qs("hint");
+  if (el) el.textContent = msg || "";
 }
 
 function isAuthoringMode() {
-  // Tableau Extensions API - environment.mode: "authoring" or "viewing"
   return tableau?.extensions?.environment?.mode === "authoring";
 }
 
@@ -40,7 +40,6 @@ function loadSettings() {
 }
 
 async function getDashboard() {
-  // dashboardContent.dashboard (extensions dashboard)
   return tableau.extensions.dashboardContent.dashboard;
 }
 
@@ -66,40 +65,63 @@ function destroyFlatpickr() {
 function initFlatpickrUI({ kind, format }) {
   destroyFlatpickr();
 
-  // ko locale
+  // flatpickr 로드 실패 방어
+  if (typeof window.flatpickr === "undefined") {
+    setHint("flatpickr 로드 실패(스크립트 경로 404 가능).");
+    return;
+  }
+
+  // ko locale (ko.js를 넣은 경우만 동작)
   if (flatpickr?.l10ns?.ko) {
     flatpickr.localize(flatpickr.l10ns.ko);
   }
 
-  fpStart = flatpickr(qs("startInput"), {
+  const startEl = qs("startInput");
+  const endEl = qs("endInput");
+  const endRow = qs("endRow");
+
+  if (!startEl || !endEl || !endRow) {
+    setHint("필수 UI 엘리먼트를 찾을 수 없습니다. (startInput/endInput/endRow)");
+    return;
+  }
+
+  fpStart = flatpickr(startEl, {
     dateFormat: format,
     allowInput: true,
   });
 
-  fpEnd = flatpickr(qs("endInput"), {
+  fpEnd = flatpickr(endEl, {
     dateFormat: format,
     allowInput: true,
   });
 
   // single 모드면 종료일 숨김
-  qs("endRow").style.display = kind === "single" ? "none" : "grid";
+  endRow.style.display = kind === "single" ? "none" : "grid";
 }
 
 function getPickedDates(kind) {
   const start = fpStart?.selectedDates?.[0] || null;
   let end = fpEnd?.selectedDates?.[0] || null;
 
-  if (kind === "single") end = start; // 싱글이면 동일값 처리
+  if (kind === "single") end = start;
   return { start, end };
 }
 
 function toISODateOnly(d) {
   if (!(d instanceof Date)) return "";
-  // 시간은 버리고 YYYY-MM-DD만
   const y = d.getFullYear();
   const m = String(d.getMonth() + 1).padStart(2, "0");
   const day = String(d.getDate()).padStart(2, "0");
   return `${y}-${m}-${day}`;
+}
+
+function isDateLikeType(paramObj) {
+  const t = (paramObj?.dataType || paramObj?.parameterType || paramObj?.type || "")
+    .toString()
+    .toLowerCase();
+  // 데이터 타입 문자열을 못 얻으면(공백) 여기선 판단 불가 -> true로 통과(운영 편의)
+  if (!t) return true;
+  return t.includes("date"); // date/datetime 둘 다 포함됨
 }
 
 async function applyToParameters({ kind, startParam, endParam }) {
@@ -114,14 +136,15 @@ async function applyToParameters({ kind, startParam, endParam }) {
 
   const pStart = map.get(startParam);
   if (!pStart) throw new Error(`파라미터를 찾을 수 없습니다: ${startParam}`);
+  if (!isDateLikeType(pStart)) throw new Error(`시작일 파라미터가 날짜 타입이 아닙니다: ${startParam}`);
 
-  // Tableau 파라미터 타입/허용값에 따라 setValueAsync에 Date를 넣어도 되고,
-  // 문자열을 넣어도 되는데(설정에 따라), 가장 안전하게 "YYYY-MM-DD" 문자열로 넣음.
   await pStart.changeValueAsync(toISODateOnly(start));
 
   if (kind === "range") {
     const pEnd = map.get(endParam);
     if (!pEnd) throw new Error(`파라미터를 찾을 수 없습니다: ${endParam}`);
+    if (!isDateLikeType(pEnd)) throw new Error(`종료일 파라미터가 날짜 타입이 아닙니다: ${endParam}`);
+
     await pEnd.changeValueAsync(toISODateOnly(end));
   }
 }
@@ -130,13 +153,9 @@ async function openConfigDialog() {
   const url = new URL("config.html", window.location.href).href;
 
   try {
-    await tableau.extensions.ui.displayDialogAsync(
-      url,
-      "", // payload 필요 없으면 빈 문자열
-      { height: 420, width: 520 }
-    );
+    await tableau.extensions.ui.displayDialogAsync(url, "", { height: 420, width: 520 });
   } catch (e) {
-    // 사용자가 X로 닫는 것도 여기로 떨어질 수 있음(정상 케이스)
+    // 사용자가 닫는 것도 정상 케이스로 취급
     console.warn("Config dialog closed or failed:", e);
   }
 }
@@ -144,8 +163,10 @@ async function openConfigDialog() {
 async function render() {
   const settings = loadSettings();
 
-  // authoring에서만 설정 버튼 노출
-  qs("settingsBtn").style.display = isAuthoringMode() ? "inline-flex" : "none";
+  const settingsBtn = qs("settingsBtn");
+  if (settingsBtn) {
+    settingsBtn.style.display = isAuthoringMode() ? "inline-flex" : "none";
+  }
 
   initFlatpickrUI(settings);
 
@@ -160,31 +181,36 @@ async function render() {
 async function init() {
   await tableau.extensions.initializeAsync();
 
-  // 버튼 이벤트
-  qs("applyBtn").addEventListener("click", async () => {
-    try {
-      setHint("");
-      const settings = loadSettings();
-      await applyToParameters(settings);
-      setHint("적용되었습니다.");
-    } catch (e) {
-      setHint(e?.message || String(e));
-    }
-  });
+  const applyBtn = qs("applyBtn");
+  const closeBtn = qs("closeBtn");
+  const settingsBtn = qs("settingsBtn");
 
-  qs("closeBtn").addEventListener("click", () => {
-    // 확장 UI를 “닫는다”는 건 실제로는 확장 자체를 숨길 수 없어서
-    // 사용자 체감상 안내만: (너가 원하면 여기서 컨테이너 높이 줄이는 방식 등 추가 가능)
-    setHint("닫기(표시 유지).");
-  });
+  if (applyBtn) {
+    applyBtn.addEventListener("click", async () => {
+      try {
+        setHint("");
+        const settings = loadSettings();
+        await applyToParameters(settings);
+        setHint("적용되었습니다.");
+      } catch (e) {
+        setHint(e?.message || String(e));
+      }
+    });
+  }
 
-  qs("settingsBtn").addEventListener("click", async () => {
-    await openConfigDialog();
-    // 다이얼로그 닫힌 뒤 settings 반영 재렌더
-    await render();
-  });
+  if (closeBtn) {
+    closeBtn.addEventListener("click", () => {
+      setHint("닫기(표시 유지).");
+    });
+  }
 
-  // Configure에서 settings가 바뀌면 자동 반영
+  if (settingsBtn) {
+    settingsBtn.addEventListener("click", async () => {
+      await openConfigDialog();
+      await render();
+    });
+  }
+
   tableau.extensions.settings.addEventListener(tableau.TableauEventType.SettingsChanged, async () => {
     await render();
   });
