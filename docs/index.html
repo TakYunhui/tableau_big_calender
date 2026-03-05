@@ -6,11 +6,11 @@
   <title>조회기간</title>
 
   <link rel="stylesheet" href="./lib/flatpickr.min.css" />
-  <link rel="stylesheet" href="./styles.css?v=20260305_60" />
+  <link rel="stylesheet" href="./styles.css?v=20260305_61" />
 </head>
 
 <body>
-  <!-- 상단 480x60 바: 클릭하면 달력 -->
+  <!-- 상단 480x60 바: 클릭하면 달력 토글 -->
   <div id="rangeBar" class="rangeBar" role="button" tabindex="-1">
     <div class="rangeLine">
       <span class="label">시작날짜</span>
@@ -26,9 +26,11 @@
     <button id="settingsBtn" class="settingsBtn" type="button" aria-label="설정">⚙</button>
   </div>
 
-  <!-- 설정 패널(iframe 내부, authoring에서만 펼침) -->
+  <!-- ✅ 달력 영역(하단 140): cfgPanel과 분리 -->
+  <div id="calHost" class="calHost"></div>
+
+  <!-- ✅ 설정 패널(하단 140): authoring에서만 -->
   <div id="cfgPanel" class="cfgPanel" aria-hidden="true">
-    <div id="calHost" class="calHost"></div>
     <div class="cfgHeader">
       <div class="cfgTitle">날짜 파라미터 매핑</div>
       <div class="cfgSub" id="cfgDashName">-</div>
@@ -74,6 +76,6 @@
 
   <script src="./lib/flatpickr.min.js"></script>
   <script src="https://extensions.tableauusercontent.com/resources/tableau.extensions.1.latest.min.js"></script>
-  <script src="./main.js?v=20260305_60"></script>
+  <script src="./main.js?v=20260305_61"></script>
 </body>
 </html>
