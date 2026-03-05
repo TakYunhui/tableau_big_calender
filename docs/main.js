@@ -9,22 +9,6 @@
   const btnApply = document.getElementById("btnApply");
   const btnClose = document.getElementById("btnClose");
 
-  // ----------------------------
-  // 0) 대시보드 배경색 맞추기(눈속임 품질 핵심)
-  //   - URL: .../index.html?bg=#F4F4F4
-  // ----------------------------
-  try {
-    const params = new URLSearchParams(location.search);
-    const bg = params.get("bg");
-    if (bg) {
-      document.documentElement.style.setProperty("--dash-bg", decodeURIComponent(bg));
-      document.body.style.background = "transparent"; // body 투명 유지
-    }
-  } catch (_) {}
-
-  // ----------------------------
-  // 1) 상태/모드
-  // ----------------------------
   let mode = "summary"; // summary | edit
   let selectedStart = null;
   let selectedEnd = null;
@@ -61,13 +45,11 @@
     statusEl.textContent = msg || " ";
   }
 
-  // ----------------------------
-  // 2) flatpickr (inline range)
-  // ----------------------------
   function ensureFlatpickr() {
     if (fp) return;
 
     const input = document.getElementById("fp");
+
     fp = flatpickr(input, {
       mode: "range",
       inline: true,
@@ -75,25 +57,17 @@
       dateFormat: "Y-m-d",
       defaultDate: [],
       onChange: (dates) => {
-        // range: [start, end]
         selectedStart = dates[0] || null;
         selectedEnd = dates[1] || null;
-
-        // end가 아직 없으면 start로 임시 표기(사용자 혼란 방지)
         renderTexts();
       }
     });
   }
 
-  // ----------------------------
-  // 3) Tableau 파라미터 적용 (있으면 적용, 없으면 무시)
-  //    - 네 기존 코드에서 파라미터 이름만 맞춰서 연결하면 됨
-  // ----------------------------
   async function applyToTableau(start, end) {
     try {
       if (!window.tableau || !tableau.extensions) return;
 
-      // 초기화 안 됐으면 시도
       if (!tableau.extensions.dashboardContent) {
         await tableau.extensions.initializeAsync();
       }
@@ -101,7 +75,7 @@
       const dashboard = tableau.extensions.dashboardContent.dashboard;
       const params = await dashboard.getParametersAsync();
 
-      // ✅ 여기 파라미터 이름을 네 환경에 맞춰 바꿔
+      // ✅ 여기만 너 대시보드 파라미터 이름으로 바꿔
       const START_PARAM = "P_시작일";
       const END_PARAM = "P_종료일";
 
@@ -116,13 +90,12 @@
 
       setStatus(`적용됨: ${startStr} ~ ${endStr}`);
     } catch (e) {
-      // Tableau 환경/권한/파라미터명 불일치 등
       setStatus(`적용 실패(파라미터/권한 확인): ${String(e).slice(0, 120)}`);
     }
   }
 
   // ----------------------------
-  // 4) 버튼 동작
+  // 버튼 동작
   // ----------------------------
   btnEdit.addEventListener("click", () => {
     ensureFlatpickr();
@@ -140,7 +113,7 @@
   });
 
   btnClose.addEventListener("click", () => {
-    // 취소: 선택 유지할지/롤백할지 결정 가능. 지금은 유지.
+    // 취소: 선택 유지(롤백 원하면 여기서 selectedStart/End를 이전값으로 돌리면 됨)
     setMode("summary");
     renderTexts();
     setStatus(" ");
@@ -159,9 +132,7 @@
     setMode("summary");
   });
 
-  // ----------------------------
-  // 5) 초기 렌더
-  // ----------------------------
+  // 초기 상태
   renderTexts();
   setStatus(" ");
   setMode("summary");
