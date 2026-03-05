@@ -1,48 +1,54 @@
 html, body {
   margin: 0;
   padding: 0;
-  background: transparent; /* 투명 배경 유지 */
+  background: transparent; /* 투명 배경 */
   font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", sans-serif;
 }
 
-/* 480x60 바 */
+/* === 메인 바 (480x60) === */
 .rangeBar {
   width: 480px;
   height: 60px;
   display: flex;
   align-items: center;
-  gap: 10px;
-  padding: 8px 10px;
-  border-radius: 10px;
-  background: transparent; /* 투명 */
-  cursor: pointer;
+  padding: 0 12px;
+  background: transparent;
   position: relative;
+  cursor: pointer;
+  user-select: none;
 }
 
-/* 글자 크게(10pt 이상) */
-.rangeCol .k {
+.rangeLine {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  white-space: nowrap;
+  overflow: hidden;
+  width: 100%;
+  padding-right: 40px; /* settings 버튼 자리 확보 */
+}
+
+/* 표시 텍스트 10pt 이상 체감: 12~13px */
+.label {
   font-size: 12px;
-  font-weight: 700;
-  color: rgba(0,0,0,0.65);
-  line-height: 1.1;
-}
-
-.rangeCol .v {
-  font-size: 13px;
   font-weight: 800;
+  color: rgba(0,0,0,0.70);
+}
+
+.value {
+  font-size: 13px;
+  font-weight: 900;
   color: rgba(0,0,0,0.92);
-  margin-top: 4px;
-  line-height: 1.1;
 }
 
-/* 가운데 구분 */
-.divider {
-  width: 1px;
-  height: 40px;
-  background: rgba(0,0,0,0.12);
+/* 구분자 */
+.sep {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(0,0,0,0.35);
 }
 
-/* 설정 버튼: authoring에서만 보이게 JS로 토글 */
+/* 설정 버튼: authoring에서만 JS로 display */
 .settingsBtn {
   position: absolute;
   right: 8px;
@@ -57,7 +63,7 @@ html, body {
   line-height: 1;
 }
 
-/* flatpickr 실제 input은 숨김 */
+/* flatpickr 연결 input은 숨김 */
 .fpHidden {
   position: absolute;
   left: -9999px;
@@ -73,13 +79,12 @@ html, body {
   min-height: 16px;
 }
 
-
-/* ===== Config Dialog ===== */
+/* === config dialog 스타일 === */
 .cfgPage { background: #fff; }
 .cfgPageWrap { padding: 14px; }
 
 .cfgHeader { margin-bottom: 10px; }
-.cfgTitle { font-size: 14px; font-weight: 800; }
+.cfgTitle { font-size: 14px; font-weight: 900; }
 .cfgSub { margin-top: 4px; font-size: 12px; color: rgba(0,0,0,.6); }
 
 .cfgRow { margin-top: 10px; }
@@ -98,3 +103,20 @@ html, body {
 .cfgHint { min-height: 16px; margin-top: 10px; font-size: 12px; color: rgba(0,0,0,.6); }
 
 .cfgFooter { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
+
+.btn {
+  height: 36px;
+  padding: 0 12px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,.18);
+  background: rgba(0,0,0,.06);
+  cursor: pointer;
+}
+.btn.primary {
+  background: rgba(0,0,0,.85);
+  color: #fff;
+  border-color: rgba(0,0,0,.85);
+}
+.btn.ghost {
+  background: rgba(0,0,0,.04);
+}
