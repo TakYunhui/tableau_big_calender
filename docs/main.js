@@ -9,10 +9,9 @@ const SETTINGS_KEYS = {
 
 const DEFAULTS = { kind: "range", format: "Y-m-d" };
 
-// 프레임 고정
+// ✅ 프레임 고정 480x200 (확장/축소 금지)
 const FRAME_WIDTH = 480;
-const FRAME_HEIGHT = 200;   // ✅ 전체 확장 고정 200
-const BAR_HEIGHT = 60;      // ✅ 상단 바 고정 60
+const FRAME_HEIGHT = 200;
 
 let fp = null;
 let unregisterParamHandlers = [];
@@ -93,6 +92,7 @@ function numberToDateDisplay(n) {
     return Number.isNaN(d.getTime()) ? String(n) : toISODateOnly(d);
   }
 
+  // 엑셀/테이블로 "일수" 들어온 경우 추정(Cloud에서 0 문제 회피용)
   const base = new Date(Date.UTC(1899, 11, 30));
   const d = new Date(base.getTime() + n * 24 * 60 * 60 * 1000);
   return Number.isNaN(d.getTime()) ? String(n) : toISODateOnly(d);
@@ -102,6 +102,7 @@ function getParamDisplay(p) {
   if (!p || !p.currentValue) return "";
   const cv = p.currentValue;
 
+  // formattedValue가 가장 안정적
   if (typeof cv.formattedValue === "string") {
     const fv = cv.formattedValue.trim();
     if (fv !== "" && fv !== "0") return fv;
@@ -117,10 +118,12 @@ function getParamDisplay(p) {
 
     const n = Number(raw);
     if (!Number.isNaN(n)) return numberToDateDisplay(n);
+
     return raw;
   }
 
   if (typeof raw === "number") return numberToDateDisplay(raw);
+
   return "";
 }
 
@@ -129,6 +132,7 @@ async function syncUIFromCurrentParameterValues(settings) {
     setValueTexts("", "");
     return;
   }
+
   const map = await getParametersMap();
 
   const pStart = map.get(settings.startParam);
@@ -196,7 +200,7 @@ function openCalendarUI() {
   if (h) h.classList.add("open");
 }
 
-/** ✅ 200 고정이므로 달력은 calHost(아래 140) 안에 inline으로 박아 넣는다 */
+/** ✅ 200 고정이므로 달력은 calHost(하단 140) 안에 inline으로 박는다 */
 function initFlatpickr(settings) {
   destroyFP();
   if (!ensureFlatpickrLoaded()) return;
@@ -204,9 +208,12 @@ function initFlatpickr(settings) {
   const input = qs("fpHidden");
   const host = qs("calHost");
   if (!input || !host) {
-    setHint("fpHidden 또는 calHost가 없습니다. index.html 수정 필요");
+    setHint("fpHidden 또는 calHost가 없습니다. index.html id 확인 필요");
     return;
   }
+
+  // host 초기화(중복 방지)
+  host.innerHTML = "";
 
   const mode = settings.kind === "single" ? "single" : "range";
 
@@ -216,7 +223,6 @@ function initFlatpickr(settings) {
     allowInput: false,
     clickOpens: false,
 
-    // ✅ 달력을 host 아래에 붙임
     inline: true,
     appendTo: host,
 
@@ -239,7 +245,7 @@ function initFlatpickr(settings) {
     },
   });
 
-  // 기본은 숨김(요구사항)
+  // 기본: 닫힘
   closeCalendarUI();
 }
 
@@ -264,7 +270,7 @@ async function applyDatesToParameters(settings, start, end) {
   }
 }
 
-/** bar 클릭 => 달력 열고/닫기 (설정 패널 열려 있으면 달력 못 열게) */
+/** 상단 바 클릭 => 달력 토글 (설정 열려있으면 달력 금지) */
 function toggleCalendar() {
   if (isConfigOpen) return;
   if (!fp) return;
@@ -272,7 +278,6 @@ function toggleCalendar() {
   if (isCalendarOpen) {
     closeCalendarUI();
   } else {
-    // 달력 열 때 설정 패널은 확실히 닫기
     closeConfigPanelUI();
     openCalendarUI();
   }
@@ -282,11 +287,13 @@ function toggleCalendar() {
 function detectType(p) {
   return (p?.dataType || p?.parameterType || p?.type || "").toString();
 }
+
 function isDateLike(p) {
   const t = detectType(p).toLowerCase();
   if (!t) return false;
   return t.includes("date");
 }
+
 function fillSelect(selectEl, items, selectedValue) {
   selectEl.innerHTML = "";
   const empty = document.createElement("option");
@@ -303,6 +310,7 @@ function fillSelect(selectEl, items, selectedValue) {
 
   if (selectedValue) selectEl.value = selectedValue;
 }
+
 async function loadDateParameterItems() {
   const dash = await getDashboard();
   const params = await dash.getParametersAsync();
@@ -313,6 +321,7 @@ async function loadDateParameterItems() {
     })
     .sort((a, b) => a.name.localeCompare(b.name));
 }
+
 async function hydrateConfigPanel(settings) {
   const dash = await getDashboard();
   const dashNameEl = qs("cfgDashName");
@@ -342,6 +351,7 @@ async function hydrateConfigPanel(settings) {
     };
   }
 }
+
 async function saveConfigFromPanel() {
   try {
     setCfgHint("");
@@ -372,6 +382,7 @@ async function saveConfigFromPanel() {
     setCfgHint(e?.message || String(e));
   }
 }
+
 async function toggleConfigPanel() {
   if (!isAuthoringMode()) return;
 
@@ -386,7 +397,7 @@ async function toggleConfigPanel() {
   }
 }
 
-/** 파라미터 외부 변경 -> UI 동기화 */
+/** 파라미터 외부 변경 => UI 동기화(파라미터 객체 이벤트) */
 async function bindParameterChangedListeners(settings) {
   unregisterParamHandlers.forEach((fn) => { try { fn(); } catch (_) {} });
   unregisterParamHandlers = [];
@@ -432,6 +443,7 @@ function bindHandlers() {
     bar.onmousedown = handler;
   }
 
+  // 설정 버튼
   if (settingsBtn) {
     settingsBtn.onclick = async (e) => {
       e.stopPropagation();
@@ -439,7 +451,7 @@ function bindHandlers() {
     };
   }
 
-  // 패널 내부 클릭 전파 막기
+  // 내부 클릭 전파 방지
   if (cfgPanel) {
     cfgPanel.onclick = (e) => e.stopPropagation();
     cfgPanel.onmousedown = (e) => e.stopPropagation();
@@ -454,7 +466,7 @@ function bindHandlers() {
 }
 
 async function render() {
-  await setFrameSizeFixed(); // ✅ 항상 480*200 고정
+  await setFrameSizeFixed();
 
   const settings = loadSettings();
 
@@ -462,7 +474,7 @@ async function render() {
   const settingsBtn = qs("settingsBtn");
   if (settingsBtn) settingsBtn.style.display = isAuthoringMode() ? "inline-flex" : "none";
 
-  // viewing이면 설정 패널 강제 닫기
+  // viewing이면 설정 패널 닫기
   if (!isAuthoringMode()) closeConfigPanelUI();
 
   // 설정 미완료 안내
