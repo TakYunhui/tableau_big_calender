@@ -41,6 +41,12 @@ html, body {
   color: rgba(0,0,0,0.92);
 }
 
+.param {
+  font-size: 12px;
+  font-weight: 800;
+  color: rgba(0,0,0,0.55);
+}
+
 /* 구분자 */
 .sep {
   font-size: 12px;
