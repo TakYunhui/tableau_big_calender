@@ -1,11 +1,17 @@
 /* =========================
-   0) 배경 투명 + 스크롤 차단
+   0) 배경 + 스크롤 차단
+   - 투명 안 먹는 환경 대비: --dash-bg로 "대시보드 배경색"을 맞춘다
+   - URL 파라미터 ?bg=#F4F4F4 로 주입 (main.js에서 처리)
    ========================= */
+:root{
+  --dash-bg: transparent; /* 기본 */
+}
+
 html, body {
   margin: 0;
   padding: 0;
   background: transparent !important;
-  overflow: hidden; /* iframe 안에서 스크롤/삐져나옴 방지 */
+  overflow: hidden;
   font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, "Noto Sans KR",
                "Apple SD Gothic Neo", Arial, sans-serif;
 }
@@ -17,9 +23,20 @@ html, body {
   width: 480px;
   height: 200px;
   box-sizing: border-box;
-  background: transparent; /* 뒤 배경 투명 */
+  background: transparent;
   display: flex;
   flex-direction: column;
+}
+
+/* ✅ 눈속임 핵심:
+   - summary 모드에서는 투명 대신 대시보드 배경색(--dash-bg)로 맞춰서
+     "흰 판이 가리는 느낌"을 최소화한다.
+*/
+.mode-summary {
+  background: var(--dash-bg) !important;
+}
+.mode-summary #app {
+  background: var(--dash-bg) !important;
 }
 
 /* =========================
@@ -65,18 +82,19 @@ html, body {
 
 /* =========================
    3) Editor Area
-   - 남은 높이 = 200 - 36(topbar) = 164px
+   - 남은 높이 = 200 - 36(topbar) - 24(status) = 140px (대략)
    ========================= */
 .editorArea {
-  flex: 1;
+  flex: 0 0 140px;
   display: flex;
   gap: 8px;
   padding: 6px 10px;
   box-sizing: border-box;
-  overflow: hidden; /* 내부 튀어나와도 iframe 밖으로 못 나가게 */
+  overflow: hidden;
+  border-radius: 10px;
 }
 
-/* 달력 영역: 실제로는 scale 적용되므로 약간 여유 있게 */
+/* 달력 영역 */
 .calWrap {
   flex: 0 0 332px;
   overflow: hidden;
@@ -85,7 +103,7 @@ html, body {
   position: relative;
 }
 
-/* inline 캘린더는 input이 의미 없으니 숨김(공간 절약) */
+/* inline 캘린더는 input이 의미 없으니 숨김 */
 .fpInput {
   position: absolute;
   opacity: 0;
@@ -94,22 +112,21 @@ html, body {
   height: 0;
 }
 
-/* flatpickr 자체가 absolute/box-shadow 등으로 튀는 걸 방지 */
+/* flatpickr 튀는거 방지 */
 .flatpickr-calendar {
   margin: 0 !important;
-  box-shadow: none !important; /* 필요하면 제거 */
+  box-shadow: none !important;
 }
 
-/* ✅ “잘림” 해결 핵심:
-   - 달력 전체를 스케일로 줄여 height를 164px에 맞춤
-   - origin을 top-left로 고정
+/* ✅ “잘림” 해결:
+   - 달력 전체를 스케일로 줄여 height를 140px 내에 맞춤
 */
 .calWrap .flatpickr-calendar {
   transform: scale(0.86);
   transform-origin: top left;
 }
 
-/* 달력 내부 여백을 줄여 실제 점유면적 감소 */
+/* 달력 내부 높이 최소화 */
 .flatpickr-innerContainer,
 .flatpickr-rContainer,
 .flatpickr-days {
@@ -152,9 +169,10 @@ html, body {
 }
 
 /* =========================
-   5) status
+   5) status (summary에서도 보여서 전체가 60px 느낌)
    ========================= */
 .status {
+  flex: 0 0 24px;
   font-size: 11px;
   opacity: 0.75;
   padding: 0 10px 6px;
@@ -165,9 +183,26 @@ html, body {
 }
 
 /* =========================
-   6) 모드 전환
-   - edit 모드에서 조회기간 텍스트 숨김
-   - summary 모드에서 편집영역 숨김
+   6) filler (눈속임)
+   - summary 모드에서 남는 영역을 대시보드 배경색으로 채움
+   - edit 모드에선 의미 없어서 숨김
+   ========================= */
+.filler{
+  flex: 1;
+  background: transparent;
+  pointer-events: none;
+}
+.mode-summary .filler{
+  background: var(--dash-bg);
+}
+.mode-edit .filler{
+  display: none;
+}
+
+/* =========================
+   7) 모드 전환
+   - summary: editor 숨김 (평소 60px만 보이는 것처럼)
+   - edit: rangeText 숨김 + editor 표시
    ========================= */
 .mode-summary .editorArea { display: none; }
 .mode-edit .rangeText { display: none; }
