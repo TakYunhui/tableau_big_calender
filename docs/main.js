@@ -1,10 +1,10 @@
 /* global tableau, flatpickr */
 
 const SETTINGS_KEYS = {
-  kind: "date_kind", // "range" | "single"
+  kind: "date_kind",              // "range" | "single"
   startParam: "date_start_param",
   endParam: "date_end_param",
-  format: "date_format", // flatpickr format (표시용)
+  format: "date_format",          // flatpickr format
 };
 
 const DEFAULTS = {
@@ -57,9 +57,11 @@ function toISODateOnly(d) {
   return `${y}-${m}-${day}`;
 }
 
-function fmtForDisplay(d) {
-  // 표시용은 YYYY-MM-DD 고정 (가독성)
-  return toISODateOnly(d) || "-";
+function setValueTexts(start, end) {
+  const startEl = qs("startText");
+  const endEl = qs("endText");
+  if (startEl) startEl.textContent = start ? toISODateOnly(start) : "-";
+  if (endEl) endEl.textContent = end ? toISODateOnly(end) : "-";
 }
 
 function destroyFP() {
@@ -71,17 +73,21 @@ function destroyFP() {
 
 function ensureFlatpickrLoaded() {
   if (typeof window.flatpickr === "undefined") {
-    setHint("flatpickr 로드 실패: docs/lib/flatpickr.min.js 경로를 확인하세요.");
+    setHint("flatpickr 로드 실패: ./lib/flatpickr.min.js 경로/순서를 확인하세요.");
     return false;
   }
   return true;
 }
 
+function openCalendar() {
+  if (fp) fp.open();
+}
+
 async function applyDatesToParameters(settings, start, end) {
   const { kind, startParam, endParam } = settings;
 
-  if (!startParam) throw new Error("시작일 파라미터가 설정되지 않았습니다.");
-  if (kind === "range" && !endParam) throw new Error("종료일 파라미터가 설정되지 않았습니다.");
+  if (!startParam) throw new Error("시작 파라미터가 설정되지 않았습니다.");
+  if (kind === "range" && !endParam) throw new Error("종료 파라미터가 설정되지 않았습니다.");
   if (!start) throw new Error("시작날짜를 선택하세요.");
   if (kind === "range" && !end) throw new Error("종료날짜를 선택하세요.");
 
@@ -89,7 +95,6 @@ async function applyDatesToParameters(settings, start, end) {
 
   const pStart = map.get(startParam);
   if (!pStart) throw new Error(`파라미터를 찾을 수 없습니다: ${startParam}`);
-
   await pStart.changeValueAsync(toISODateOnly(start));
 
   if (kind === "range") {
@@ -99,20 +104,13 @@ async function applyDatesToParameters(settings, start, end) {
   }
 }
 
-function setTexts(start, end) {
-  const startText = qs("startText");
-  const endText = qs("endText");
-  if (startText) startText.textContent = fmtForDisplay(start);
-  if (endText) endText.textContent = fmtForDisplay(end);
-}
-
 function initFlatpickr(settings) {
   destroyFP();
   if (!ensureFlatpickrLoaded()) return;
 
   const input = qs("fpHidden");
   if (!input) {
-    setHint("fpHidden input을 찾을 수 없습니다.");
+    setHint("fpHidden input이 없습니다. index.html에 <input id='fpHidden'>가 있어야 합니다.");
     return;
   }
 
@@ -122,31 +120,28 @@ function initFlatpickr(settings) {
     mode,
     dateFormat: settings.format || DEFAULTS.format,
     allowInput: false,
-    clickOpens: false, // 우리가 영역 클릭으로 열 거라 false
+    clickOpens: false,
+
     onOpen: () => setHint(""),
+
     onChange: async (selectedDates) => {
-      // range면 [start,end], single이면 [start]
       const start = selectedDates[0] || null;
       const end = settings.kind === "single" ? start : (selectedDates[1] || null);
 
-      // 텍스트는 선택 즉시 업데이트
-      setTexts(start, end);
+      // 표시 텍스트 즉시 업데이트
+      setValueTexts(start, end);
 
-      // range는 end까지 선택되기 전엔 적용하지 않음
+      // range는 종료 선택 전엔 적용하지 않음
       if (settings.kind === "range" && !end) return;
 
       try {
         await applyDatesToParameters(settings, start, end);
-        setHint(""); // 조용히
+        setHint("");
       } catch (e) {
         setHint(e?.message || String(e));
       }
     },
   });
-}
-
-function openCalendar() {
-  if (fp) fp.open();
 }
 
 async function openConfigDialog() {
@@ -159,6 +154,31 @@ async function openConfigDialog() {
   }
 }
 
+function bindClickHandlers() {
+  const bar = qs("rangeBar");
+  const settingsBtn = qs("settingsBtn");
+
+  if (!bar) {
+    setHint("rangeBar를 찾을 수 없습니다. index.html id 확인 필요.");
+    return;
+  }
+
+  // 바 클릭 -> 달력
+  bar.onclick = (e) => {
+    if (e.target && e.target.id === "settingsBtn") return;
+    openCalendar();
+  };
+
+  // 설정 버튼
+  if (settingsBtn) {
+    settingsBtn.onclick = async (e) => {
+      e.stopPropagation();
+      await openConfigDialog();
+      await render();
+    };
+  }
+}
+
 async function render() {
   const settings = loadSettings();
 
@@ -166,44 +186,22 @@ async function render() {
   const settingsBtn = qs("settingsBtn");
   if (settingsBtn) settingsBtn.style.display = isAuthoringMode() ? "inline-flex" : "none";
 
-  // settings 미설정이면 안내
+  // 초기 표시
+  setValueTexts(null, null);
+
+  // 설정 미완료 힌트
   if (!settings.startParam || (settings.kind === "range" && !settings.endParam)) {
     setHint(isAuthoringMode() ? "⚙ 설정에서 파라미터를 매핑하세요." : "조회기간 설정이 아직 완료되지 않았습니다.");
   } else {
     setHint("");
   }
 
-  // flatpickr 초기화
   initFlatpickr(settings);
-
-  // 초기 표시(선택값 없으면 '-')
-  setTexts(null, null);
+  bindClickHandlers();
 }
 
 async function init() {
   await tableau.extensions.initializeAsync();
-
-  // 클릭 영역 전체 → 달력 오픈
-  const bar = qs("rangeBar");
-  if (bar) {
-    bar.addEventListener("click", (e) => {
-      // 설정 버튼 클릭은 달력 오픈 막기
-      if (e.target && e.target.id === "settingsBtn") return;
-      openCalendar();
-    });
-    bar.addEventListener("keydown", (e) => {
-      if (e.key === "Enter" || e.key === " ") openCalendar();
-    });
-  }
-
-  const settingsBtn = qs("settingsBtn");
-  if (settingsBtn) {
-    settingsBtn.addEventListener("click", async (e) => {
-      e.stopPropagation();
-      await openConfigDialog();
-      await render(); // 설정 바뀌면 재렌더
-    });
-  }
 
   tableau.extensions.settings.addEventListener(tableau.TableauEventType.SettingsChanged, async () => {
     await render();
