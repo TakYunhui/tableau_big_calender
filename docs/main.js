@@ -127,20 +127,16 @@ async function applyToParameters({ kind, startParam, endParam }) {
 }
 
 async function openConfigDialog() {
-  // config.html은 같은 origin에서 제공되어야 함 (GitHub Pages 등)
-  const url = `${window.location.origin}${window.location.pathname.replace(/index\.html?$/i, "")}config.html`;
-
-  // payload로 현재 설정을 넘겨도 되지만, config.html에서 settings를 직접 읽어도 됨
-  const payload = "";
+  const url = new URL("config.html", window.location.href).href;
 
   try {
-    await tableau.extensions.ui.displayDialogAsync(url, payload, {
-      height: 420,
-      width: 520,
-    });
+    await tableau.extensions.ui.displayDialogAsync(
+      url,
+      "", // payload 필요 없으면 빈 문자열
+      { height: 420, width: 520 }
+    );
   } catch (e) {
-    // 사용자가 닫으면 에러로 떨어질 수 있음(정상)
-    // 콘솔은 남기되 UI는 조용히
+    // 사용자가 X로 닫는 것도 여기로 떨어질 수 있음(정상 케이스)
     console.warn("Config dialog closed or failed:", e);
   }
 }
