@@ -79,6 +79,21 @@ function ensureFlatpickrLoaded() {
   return true;
 }
 
+function setMappingTexts(settings) {
+  const sEl = qs("startParamName");
+  const eEl = qs("endParamName");
+
+  if (sEl) sEl.textContent = settings.startParam ? settings.startParam : "(미설정)";
+  if (eEl) {
+    // single이면 종료 파라미터는 비워둘 수 있으니 표시 처리
+    if (settings.kind === "single") {
+      eEl.textContent = settings.endParam ? settings.endParam : "(단일)";
+    } else {
+      eEl.textContent = settings.endParam ? settings.endParam : "(미설정)";
+    }
+  }
+}
+
 function openCalendar() {
   if (fp) fp.open();
 }
@@ -186,7 +201,10 @@ async function render() {
   const settingsBtn = qs("settingsBtn");
   if (settingsBtn) settingsBtn.style.display = isAuthoringMode() ? "inline-flex" : "none";
 
-  // 초기 표시
+  // ✅ 여기 추가: 매핑된 파라미터명 표시
+  setMappingTexts(settings);
+
+  // 초기 값 표시(아직 선택 안 했으면 '-')
   setValueTexts(null, null);
 
   // 설정 미완료 힌트
