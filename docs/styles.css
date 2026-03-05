@@ -229,3 +229,6 @@ html, body {
 .mode-edit #btnEdit { display: none; }
 .mode-summary #btnApply,
 .mode-summary #btnClose { display: none; }
+
+/* styles.css가 진짜 적용되는지 테스트 */
+#app { outline: 3px solid red !important; }
