@@ -20,19 +20,17 @@
   const btnCfgSave = document.getElementById("btnCfgSave");
   const cfgHint = document.getElementById("cfgHint");
 
-  let mode = "summary"; // summary | edit
+  let mode = "summary";
 
   let fp = null;
   let selectedStart = null;
   let selectedEnd = null;
 
-  // tableau context
   let dashboard = null;
   let dashboardKey = "unknown";
   let allParams = [];
-  let dateParams = [];
+  let candidateParams = []; // ✅ 날짜 후보(강화)
 
-  // mapping (per dashboard)
   let mapStartName = "";
   let mapEndName = "";
   let mapSingle = false;
@@ -68,116 +66,59 @@
     }
   }
 
-  // -------- Date helpers (UTC safe) --------
+  // ---- Date helpers ----
   function toUTCDateLikeLocalDate(dLocal) {
-    // dLocal의 Y/M/D를 그대로 UTC Date로 만든다
     if (!dLocal) return null;
     return new Date(Date.UTC(dLocal.getFullYear(), dLocal.getMonth(), dLocal.getDate()));
   }
 
-  function valueToLocalDate(paramCurrentValue) {
-    // Parameter.currentValue: DataValue (value가 Date일 수도, string일 수도)
-    // 안전하게 Date로 변환
-    if (!paramCurrentValue) return null;
-    const v = paramCurrentValue.value;
+  function tryParseToLocalDate(v) {
+    if (v == null) return null;
 
-    if (v instanceof Date) {
-      // Tableau가 Date를 주는 경우: UTC 기준일 수 있으니 local로 "날짜만" 맞춤
+    if (v instanceof Date && !isNaN(v.getTime())) {
       return new Date(v.getFullYear(), v.getMonth(), v.getDate());
     }
 
     if (typeof v === "string") {
-      // "YYYY-MM-DD" 혹은 ISO 형태 대응
+      // YYYY-MM-DD 우선
       const m = v.match(/^(\d{4})-(\d{2})-(\d{2})/);
       if (m) return new Date(Number(m[1]), Number(m[2]) - 1, Number(m[3]));
-      const dd = new Date(v);
-      if (!isNaN(dd.getTime())) return new Date(dd.getFullYear(), dd.getMonth(), dd.getDate());
+      const d = new Date(v);
+      if (!isNaN(d.getTime())) return new Date(d.getFullYear(), d.getMonth(), d.getDate());
     }
 
     return null;
   }
 
-  // -------- Tableau: init & parameter discovery --------
-  async function initTableau() {
-    if (!window.tableau || !tableau.extensions) {
-      setStatus("Tableau Extensions API를 찾을 수 없습니다.");
-      return;
-    }
-
-    await tableau.extensions.initializeAsync();
-
-    dashboard = tableau.extensions.dashboardContent.dashboard;
-    const dname = dashboard?.name || "대시보드";
-    // 대시보드별 저장 키 (이름 기반)
-    dashboardKey = `dash_${dname}`;
-
-    cfgDashName.textContent = dname;
-
-    allParams = await dashboard.getParametersAsync();
-    dateParams = (allParams || []).filter(p => {
-      const t = String(p.dataType || "").toLowerCase();
-      return t.includes("date"); // date or date-time
-    });
-
-    await loadMappingFromSettings();
-
-    // 매핑이 없으면 자동 추천만 해두고, 상태에 안내
-    if (!mapStartName && dateParams.length > 0) {
-      const guess = guessMapping(dateParams);
-      mapStartName = guess.start || "";
-      mapEndName = guess.end || "";
-      mapSingle = !mapEndName; // end가 없으면 단일로
-      setStatus("날짜 파라미터 매핑이 없습니다. [설정]에서 저장하세요.");
-    } else {
-      setStatus(" ");
-    }
-
-    // 매핑된 파라미터의 현재값을 읽어서 초기 조회기간 표시
-    await syncSelectedFromParameterValues();
-    renderTexts();
+  function getAllowableType(p) {
+    return p?.allowableValues?.type || "unknown";
   }
 
-  function guessMapping(params) {
-    // 이름 기반 휴리스틱: 시작/종료 키워드
-    const startKeys = ["start", "from", "begin", "시작", "조회시작", "시작일"];
-    const endKeys = ["end", "to", "finish", "종료", "조회종료", "종료일"];
+  // ✅ 후보 판정: (1) dataType이 date류 OR (2) currentValue가 날짜로 파싱 OR (3) allowableValues에서 날짜로 파싱
+  function isDateCandidate(p) {
+    const dt = String(p?.dataType || "").toLowerCase(); // 'date', 'date-time', 'datetime', ...
+    if (dt === "date" || dt === "date-time" || dt === "datetime" || dt.includes("date")) return true;
 
-    const score = (name, keys) => {
-      const n = String(name || "").toLowerCase();
-      let s = 0;
-      keys.forEach(k => {
-        const kk = k.toLowerCase();
-        if (n.includes(kk)) s += 10;
-      });
-      return s;
-    };
+    const cv = p?.currentValue?.value;
+    if (tryParseToLocalDate(cv)) return true;
 
-    let bestStart = null;
-    let bestEnd = null;
-    let bestStartScore = -1;
-    let bestEndScore = -1;
-
-    params.forEach(p => {
-      const s = score(p.name, startKeys);
-      const e = score(p.name, endKeys);
-      if (s > bestStartScore) { bestStartScore = s; bestStart = p; }
-      if (e > bestEndScore) { bestEndScore = e; bestEnd = p; }
-    });
-
-    // 같은 파라미터가 start/end로 동시에 뽑히면 end를 비움(단일로 처리)
-    if (bestStart && bestEnd && bestStart.name === bestEnd.name) {
-      return { start: bestStart.name, end: "" };
+    const av = p?.allowableValues;
+    if (av?.type === "list" && Array.isArray(av.values) && av.values.length > 0) {
+      // values: DataValue[] 일 수 있음
+      const first = av.values[0]?.value ?? av.values[0];
+      if (tryParseToLocalDate(first)) return true;
     }
 
-    // 키워드 점수가 너무 낮으면: 2개 이상이면 0/1로
-    if (bestStartScore <= 0 && params.length >= 1) bestStart = params[0];
-    if (bestEndScore <= 0 && params.length >= 2) bestEnd = params[1];
+    if (av?.type === "range" && av.min && av.max) {
+      const minV = av.min?.value ?? av.min;
+      const maxV = av.max?.value ?? av.max;
+      if (tryParseToLocalDate(minV) || tryParseToLocalDate(maxV)) return true;
+    }
 
-    return { start: bestStart?.name || "", end: bestEnd?.name || "" };
+    return false;
   }
 
   function settingKey(k) {
-    // 대시보드별 키
     return `${dashboardKey}__${k}`;
   }
 
@@ -187,8 +128,7 @@
       mapStartName = s.get(settingKey("startParam")) || "";
       mapEndName = s.get(settingKey("endParam")) || "";
       mapSingle = (s.get(settingKey("single")) || "0") === "1";
-    } catch (e) {
-      // settings 접근 실패해도 UI는 동작하게
+    } catch (_) {
       mapStartName = "";
       mapEndName = "";
       mapSingle = false;
@@ -200,7 +140,6 @@
     const end = selEnd.value || "";
     const single = chkSingle.checked;
 
-    // 단일이면 end를 비움
     mapStartName = start;
     mapEndName = single ? "" : end;
     mapSingle = single;
@@ -228,22 +167,18 @@
 
     if (!pStart) return;
 
-    const startLocal = valueToLocalDate(pStart.currentValue);
-    const endLocal = pEnd ? valueToLocalDate(pEnd.currentValue) : startLocal;
+    const startLocal = tryParseToLocalDate(pStart.currentValue?.value);
+    const endLocal = pEnd ? tryParseToLocalDate(pEnd.currentValue?.value) : startLocal;
 
-    selectedStart = startLocal || selectedStart;
-    selectedEnd = endLocal || selectedEnd;
+    if (startLocal) selectedStart = startLocal;
+    if (endLocal) selectedEnd = endLocal;
 
-    // 달력이 이미 생성돼 있으면 캘린더에도 반영
     if (fp && selectedStart) {
-      fp.setDate(
-        selectedEnd ? [selectedStart, selectedEnd] : [selectedStart],
-        false
-      );
+      fp.setDate(selectedEnd ? [selectedStart, selectedEnd] : [selectedStart], false);
     }
   }
 
-  // -------- flatpickr --------
+  // ---- flatpickr ----
   function ensureFlatpickr() {
     if (fp) return;
 
@@ -262,7 +197,6 @@
     });
   }
 
-  // -------- apply --------
   async function applyToTableau() {
     const pStart = getParamByName(mapStartName);
     const pEnd = mapSingle ? null : getParamByName(mapEndName);
@@ -275,12 +209,9 @@
       setStatus("시작일을 먼저 선택하세요.");
       return;
     }
-
-    // 단일 or 종료 미선택이면 시작=종료 처리
     if (mapSingle || !selectedEnd) selectedEnd = selectedStart;
 
     try {
-      // Date 파라미터는 UTC Date 객체가 기대됨(안전) :contentReference[oaicite:2]{index=2}
       const startUTC = toUTCDateLikeLocalDate(selectedStart);
       const endUTC = toUTCDateLikeLocalDate(selectedEnd);
 
@@ -293,37 +224,7 @@
     }
   }
 
-  // -------- config UI --------
-  function openConfig() {
-    // 옵션 채우기
-    const opts = [{ value: "", label: "선택 안 함" }]
-      .concat(dateParams.map(p => ({ value: p.name, label: p.name })));
-
-    fillSelect(selStart, opts);
-    fillSelect(selEnd, opts);
-
-    // 현재 매핑 반영
-    selStart.value = mapStartName || "";
-    selEnd.value = mapEndName || "";
-    chkSingle.checked = !!mapSingle;
-
-    // 단일이면 end 비활성
-    selEnd.disabled = chkSingle.checked;
-
-    // 힌트
-    if (dateParams.length === 0) {
-      cfgHint.innerHTML = "• 날짜/날짜시간 파라미터가 없습니다.<br/>• 대시보드에 Date/Date-Time 파라미터를 먼저 만들어야 합니다.";
-    } else {
-      cfgHint.innerHTML = "• 날짜/날짜시간 파라미터만 표시됩니다.<br/>• 저장하면 이 대시보드에서만 매핑이 유지됩니다.";
-    }
-
-    cfgModal.style.display = "block";
-  }
-
-  function closeConfig() {
-    cfgModal.style.display = "none";
-  }
-
+  // ---- config UI ----
   function fillSelect(sel, options) {
     sel.innerHTML = "";
     options.forEach(o => {
@@ -332,6 +233,45 @@
       op.textContent = o.label;
       sel.appendChild(op);
     });
+  }
+
+  function openConfig() {
+    const opts = [{ value: "", label: "선택 안 함" }].concat(
+      candidateParams.map(p => {
+        const dt = String(p.dataType || "unknown");
+        const at = getAllowableType(p);
+        const label = `${p.name}  (${dt}, ${at})`;
+        return { value: p.name, label };
+      })
+    );
+
+    fillSelect(selStart, opts);
+    fillSelect(selEnd, opts);
+
+    selStart.value = mapStartName || "";
+    selEnd.value = mapEndName || "";
+    chkSingle.checked = !!mapSingle;
+
+    selEnd.disabled = chkSingle.checked;
+    if (chkSingle.checked) selEnd.value = "";
+
+    if (allParams.length === 0) {
+      cfgHint.innerHTML = "• 이 대시보드에서 파라미터를 찾지 못했습니다.";
+    } else if (candidateParams.length === 0) {
+      cfgHint.innerHTML =
+        "• 파라미터는 있지만 날짜 후보가 없습니다.<br/>" +
+        "• (체크) 파라미터가 ‘문자열’로 만들어져 있거나, 값이 날짜로 파싱되지 않을 수 있습니다.";
+    } else {
+      cfgHint.innerHTML =
+        `• 전체 파라미터 ${allParams.length}개 중 날짜 후보 ${candidateParams.length}개 표시 중.<br/>` +
+        "• (표시) 파라미터명 (dataType, allowableValues.type)";
+    }
+
+    cfgModal.style.display = "block";
+  }
+
+  function closeConfig() {
+    cfgModal.style.display = "none";
   }
 
   chkSingle.addEventListener("change", () => {
@@ -349,21 +289,50 @@
     renderTexts();
   });
 
-  // -------- calendar mode buttons --------
+  // ---- init tableau ----
+  async function initTableau() {
+    if (!window.tableau || !tableau.extensions) {
+      setStatus("Tableau Extensions API를 찾을 수 없습니다.");
+      return;
+    }
+
+    await tableau.extensions.initializeAsync();
+    dashboard = tableau.extensions.dashboardContent.dashboard;
+
+    const dname = dashboard?.name || "대시보드";
+    dashboardKey = `dash_${dname}`;
+    cfgDashName.textContent = dname;
+
+    allParams = await dashboard.getParametersAsync();
+
+    // ✅ 날짜 후보 강화
+    candidateParams = (allParams || []).filter(isDateCandidate);
+    candidateParams.sort((a, b) => String(a.name).localeCompare(String(b.name), "ko"));
+
+    await loadMappingFromSettings();
+
+    if (!mapStartName) {
+      setStatus("날짜 파라미터 매핑이 필요합니다. [설정]을 누르세요.");
+    } else {
+      setStatus(" ");
+    }
+
+    await syncSelectedFromParameterValues();
+    renderTexts();
+  }
+
+  // ---- buttons ----
   btnEdit.addEventListener("click", async () => {
-    // 매핑 없으면 설정 유도
     if (!mapStartName) {
       openConfig();
       setStatus("먼저 [설정]에서 시작/종료 파라미터를 지정하세요.");
       return;
     }
-
     ensureFlatpickr();
     setMode("edit");
 
     await syncSelectedFromParameterValues();
     renderTexts();
-
     setStatus("기간을 선택 후 [적용]하세요.");
   });
 
@@ -377,17 +346,8 @@
     setMode("summary");
   });
 
-  // -------- boot --------
+  // ---- boot ----
   renderTexts();
   setStatus("초기화 중...");
-
-  initTableau()
-    .then(() => {
-      // 매핑이 있으면 바로 조회기간 표시
-      setStatus(mapStartName ? " " : "날짜 파라미터 매핑이 필요합니다. [설정]을 누르세요.");
-    })
-    .catch((e) => {
-      setStatus(`초기화 실패: ${String(e).slice(0, 120)}`);
-    });
-
+  initTableau().catch(e => setStatus(`초기화 실패: ${String(e).slice(0, 120)}`));
 })();
