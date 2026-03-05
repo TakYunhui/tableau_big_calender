@@ -61,7 +61,7 @@ html, body {
   line-height: 1;
 }
 
-/* ✅ fpHidden은 화면 밖으로 보내면 달력도 같이 밖으로 뜸 */
+/* fpHidden은 화면 밖으로 보내면 달력도 같이 밖으로 뜨는 경우가 있어 fixed 0,0 */
 .fpHidden {
   position: fixed;
   left: 0;
@@ -72,7 +72,6 @@ html, body {
   pointer-events: none;
 }
 
-/* 힌트는 필요하면 쓰고, 아니면 없어도 됨 */
 .hint {
   margin-top: 4px;
   font-size: 12px;
@@ -80,26 +79,54 @@ html, body {
   min-height: 16px;
 }
 
-/* ===== 아래 영역: 140px 고정 ===== */
-/* 480x200 전체에서 상단 60 제외한 영역 */
-.cfgPanel,
-.calHost {
+/* ===== 하단 영역: 140px 고정(달력/설정 중 1개만 표시) ===== */
+.calHost,
+.cfgPanel {
   width: 480px;
   height: 140px;
   box-sizing: border-box;
   display: none;
-  overflow: auto;
 }
 
 /* 열릴 때만 표시 */
-.cfgPanel.open { display: block; }
 .calHost.open { display: block; }
+.cfgPanel.open { display: block; }
 
-/* ===== 설정 패널 스타일 (아래 140 영역 안에서만) ===== */
+/* ===== 달력 영역 ===== */
+.calHost {
+  overflow: hidden;
+  border-top: 1px solid rgba(0,0,0,0.12);
+  background: rgba(255,255,255,0.95);
+  padding: 0;
+}
+
+/* inline 달력이 calHost 안에서만 보이게 */
+.calHost .flatpickr-calendar {
+  width: 480px !important;
+  max-width: 480px !important;
+  position: static !important;
+  margin: 0 !important;
+  box-shadow: none !important;
+  border: 0 !important;
+}
+
+/* 140 안에 들어가게 살짝 컴팩트 */
+.calHost .flatpickr-months,
+.calHost .flatpickr-weekdays {
+  padding: 2px 6px;
+}
+
+.calHost .flatpickr-day {
+  height: 26px;
+  line-height: 26px;
+}
+
+/* ===== 설정 패널 ===== */
 .cfgPanel {
   background: rgba(255,255,255,0.95);
   border-top: 1px solid rgba(0,0,0,0.12);
   padding: 10px 12px;
+  overflow: auto;
 }
 
 .cfgHeader { margin-bottom: 6px; }
@@ -138,43 +165,13 @@ html, body {
   cursor: pointer;
   font-size: 12px;
 }
+
 .btn.primary {
   background: rgba(0,0,0,.85);
   color: #fff;
   border-color: rgba(0,0,0,.85);
 }
+
 .btn.ghost {
   background: rgba(0,0,0,.04);
-}
-
-/* ===== 달력 영역 (아래 140 영역 안에 "내장형"으로) ===== */
-.calHost {
-  overflow: hidden; /* 달력 스크롤은 내부에서 처리 */
-  border-top: 1px solid rgba(0,0,0,0.12);
-  background: rgba(255,255,255,0.95);
-  padding: 0;
-}
-
-/* flatpickr 달력을 calHost 안에 딱 맞춰 넣기 */
-.calHost .flatpickr-calendar {
-  width: 480px !important;
-  max-width: 480px !important;
-
-  /* inline 모드에서 이상한 absolute 방지 */
-  position: static !important;
-
-  margin: 0 !important;
-  box-shadow: none !important;
-  border: 0 !important;
-}
-
-/* 달력 상단/셀 크기 조금 줄여서 140 안에 들어가게 */
-.calHost .flatpickr-months,
-.calHost .flatpickr-weekdays {
-  padding: 2px 6px;
-}
-
-.calHost .flatpickr-day {
-  height: 26px;
-  line-height: 26px;
 }
