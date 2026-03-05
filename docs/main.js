@@ -7,22 +7,26 @@ const SETTINGS_KEYS = {
   format: "date_format",
 };
 
-const DEFAULTS = {
-  kind: "range",
-  format: "Y-m-d",
-};
+const DEFAULTS = { kind: "range", format: "Y-m-d" };
 
-// UI 사이즈
 const FRAME_WIDTH = 480;
-const FRAME_HEIGHT_COLLAPSED = 60;
-const FRAME_HEIGHT_EXPANDED = 330; // 달력 보이는 높이
+const H_COLLAPSED = 60;
+const H_CONFIG = 270;      // 설정 패널 펼침 높이
+const H_CALENDAR = 330;    // 달력 보이기 높이
 
 let fp = null;
+let unregisterParamHandlers = [];
+let isConfigOpen = false;
 
 function qs(id) { return document.getElementById(id); }
 
 function setHint(msg) {
   const el = qs("hint");
+  if (el) el.textContent = msg || "";
+}
+
+function setCfgHint(msg) {
+  const el = qs("cfgHint");
   if (el) el.textContent = msg || "";
 }
 
@@ -71,13 +75,11 @@ function setValueTexts(startDisplay, endDisplay) {
 function numberToDateDisplay(n) {
   if (typeof n !== "number" || Number.isNaN(n)) return "";
 
-  // epoch ms로 보이면
   if (n > 10_000_000_000) {
     const d = new Date(n);
     return Number.isNaN(d.getTime()) ? String(n) : toISODateOnly(d);
   }
 
-  // serial day(1899-12-30 기준) 추정
   const base = new Date(Date.UTC(1899, 11, 30));
   const d = new Date(base.getTime() + n * 24 * 60 * 60 * 1000);
   return Number.isNaN(d.getTime()) ? String(n) : toISODateOnly(d);
@@ -86,16 +88,13 @@ function numberToDateDisplay(n) {
 /** Tableau currentValue -> 표시 문자열 (Cloud 대응) */
 function getParamDisplay(p) {
   if (!p || !p.currentValue) return "";
-
   const cv = p.currentValue;
 
-  // 1) formattedValue 우선
   if (typeof cv.formattedValue === "string") {
     const fv = cv.formattedValue.trim();
     if (fv !== "" && fv !== "0") return fv;
   }
 
-  // 2) raw value fallback
   const raw = (cv && typeof cv === "object" && "value" in cv) ? cv.value : cv;
 
   if (raw instanceof Date && !Number.isNaN(raw.getTime())) return toISODateOnly(raw);
@@ -127,41 +126,54 @@ function destroyFP() {
   if (fp) { fp.destroy(); fp = null; }
 }
 
-/** Tableau 확장 프레임 크기 조절 (환경별 함수명 차이 대응) */
 async function setFrameSize(width, height) {
   try {
     if (tableau?.extensions?.ui?.setFrameSizeAsync) {
       await tableau.extensions.ui.setFrameSizeAsync(width, height);
-      return;
-    }
-    if (tableau?.extensions?.ui?.resizeAsync) {
+    } else if (tableau?.extensions?.ui?.resizeAsync) {
       await tableau.extensions.ui.resizeAsync(width, height);
-      return;
     }
-    // 함수가 없으면 그냥 무시 (일부 환경)
   } catch (e) {
     console.warn("setFrameSize failed:", e);
   }
 }
 
-async function expandForCalendar() {
-  await setFrameSize(FRAME_WIDTH, FRAME_HEIGHT_EXPANDED);
-}
-
-async function collapseAfterCalendar() {
-  await setFrameSize(FRAME_WIDTH, FRAME_HEIGHT_COLLAPSED);
-}
-
-function openCalendar() {
-  if (!fp) {
-    setHint("달력 인스턴스가 없습니다(fp=null). 설정/초기화 상태 확인 필요");
+/** 현재 파라미터 값 -> UI 반영 */
+async function syncUIFromCurrentParameterValues(settings) {
+  if (!settings.startParam) {
+    setValueTexts("", "");
     return;
   }
-  // 프레임 확장 후 열기(잘림 방지)
-  expandForCalendar().finally(() => {
-    // iFrame 리사이즈 직후 바로 open이 씹히는 케이스 방어
-    setTimeout(() => fp.open(), 0);
-  });
+  const map = await getParametersMap();
+
+  const pStart = map.get(settings.startParam);
+  const startDisplay = getParamDisplay(pStart);
+
+  let endDisplay = "";
+  if (settings.kind === "single") {
+    endDisplay = startDisplay;
+  } else {
+    const pEnd = map.get(settings.endParam);
+    endDisplay = getParamDisplay(pEnd);
+  }
+
+  setValueTexts(startDisplay, endDisplay);
+}
+
+/** Cloud 초기 로딩 지연 대응 */
+async function syncUIWithRetry(settings, tries = 8, delayMs = 250) {
+  for (let i = 0; i < tries; i++) {
+    await syncUIFromCurrentParameterValues(settings);
+
+    const s = qs("startText")?.textContent?.trim();
+    const e = qs("endText")?.textContent?.trim();
+
+    const okStart = s && s !== "-";
+    const okEnd = settings.kind === "single" ? true : (e && e !== "-");
+
+    if (okStart && okEnd) return;
+    await new Promise((r) => setTimeout(r, delayMs));
+  }
 }
 
 async function applyDatesToParameters(settings, start, end) {
@@ -185,45 +197,7 @@ async function applyDatesToParameters(settings, start, end) {
   }
 }
 
-/** 현재 파라미터 값 -> UI 반영 (동기화) */
-async function syncUIFromCurrentParameterValues(settings) {
-  if (!settings.startParam) {
-    setValueTexts("", "");
-    return;
-  }
-
-  const map = await getParametersMap();
-  const pStart = map.get(settings.startParam);
-  const startDisplay = getParamDisplay(pStart);
-
-  let endDisplay = "";
-  if (settings.kind === "single") {
-    endDisplay = startDisplay;
-  } else {
-    const pEnd = map.get(settings.endParam);
-    endDisplay = getParamDisplay(pEnd);
-  }
-
-  setValueTexts(startDisplay, endDisplay);
-}
-
-/** Cloud에서 currentValue가 늦게 잡히는 케이스 재시도 */
-async function syncUIWithRetry(settings, tries = 8, delayMs = 250) {
-  for (let i = 0; i < tries; i++) {
-    await syncUIFromCurrentParameterValues(settings);
-
-    const s = qs("startText")?.textContent?.trim();
-    const e = qs("endText")?.textContent?.trim();
-
-    const okStart = s && s !== "-";
-    const okEnd = settings.kind === "single" ? true : (e && e !== "-");
-
-    if (okStart && okEnd) return;
-
-    await new Promise((r) => setTimeout(r, delayMs));
-  }
-}
-
+/** 달력 init */
 function initFlatpickr(settings) {
   destroyFP();
   if (!ensureFlatpickrLoaded()) return;
@@ -244,25 +218,22 @@ function initFlatpickr(settings) {
 
     onOpen: () => setHint(""),
 
-    onClose: () => {
-      // 닫히면 프레임 다시 줄이기
-      collapseAfterCalendar();
+    onClose: async () => {
+      // 달력 닫히면: 설정 패널 열려있으면 설정 높이, 아니면 접기
+      await setFrameSize(FRAME_WIDTH, isConfigOpen ? H_CONFIG : H_COLLAPSED);
     },
 
     onChange: async (selectedDates) => {
       const start = selectedDates[0] || null;
       const end = settings.kind === "single" ? start : (selectedDates[1] || null);
 
-      // UI 즉시
       setValueTexts(start ? toISODateOnly(start) : "-", end ? toISODateOnly(end) : "-");
 
-      // range는 end 선택 전엔 적용 안 함
       if (settings.kind === "range" && !end) return;
 
       try {
         await applyDatesToParameters(settings, start, end);
         setHint("");
-        // 적용 후 현재값 재동기화(서버 반영/형식 맞추기)
         await syncUIWithRetry(settings, 4, 150);
       } catch (e) {
         setHint(e?.message || String(e));
@@ -271,63 +242,231 @@ function initFlatpickr(settings) {
   });
 }
 
-async function openConfigDialog() {
-  const url = new URL("config.html", window.location.href).href;
-  try {
-    await tableau.extensions.ui.displayDialogAsync(url, "", { height: 420, width: 520 });
-  } catch (e) {
-    console.warn("Config dialog closed or failed:", e);
-  }
-}
+/** 달력 열기: 날짜 표시 영역 클릭 시에만 */
+function openCalendar() {
+  if (isConfigOpen) return; // 설정 펼친 상태에선 달력 안 열리게(원하면 삭제 가능)
 
-function bindClickHandlers() {
-  const bar = qs("rangeBar");
-  const settingsBtn = qs("settingsBtn");
-
-  if (!bar) {
-    setHint("rangeBar를 찾을 수 없습니다. index.html 구조/id 확인 필요");
+  if (!fp) {
+    setHint("달력 인스턴스(fp)가 없습니다. 초기화 상태 확인 필요");
     return;
   }
 
-  const handler = (e) => {
-    if (e.target && e.target.id === "settingsBtn") return;
-    openCalendar();
-  };
+  setFrameSize(FRAME_WIDTH, H_CALENDAR).finally(() => {
+    setTimeout(() => fp.open(), 0);
+  });
+}
 
-  // click만 가끔 씹히는 환경 방어
-  bar.onclick = handler;
-  bar.onmousedown = handler;
+/** 설정 패널 UI 채우기 */
+function detectType(p) {
+  return (p?.dataType || p?.parameterType || p?.type || "").toString();
+}
 
-  if (settingsBtn) {
-    settingsBtn.onclick = async (e) => {
-      e.stopPropagation();
-      await openConfigDialog();
-      await render();
+function isDateLike(p) {
+  const t = detectType(p).toLowerCase();
+  if (!t) return false;
+  return t.includes("date"); // date/datetime
+}
+
+function fillSelect(selectEl, items, selectedValue) {
+  selectEl.innerHTML = "";
+  const empty = document.createElement("option");
+  empty.value = "";
+  empty.textContent = "선택";
+  selectEl.appendChild(empty);
+
+  items.forEach((it) => {
+    const opt = document.createElement("option");
+    opt.value = it.name;
+    opt.textContent = it.label;
+    selectEl.appendChild(opt);
+  });
+
+  if (selectedValue) selectEl.value = selectedValue;
+}
+
+async function loadDateParameterItems() {
+  const dash = await getDashboard();
+  const params = await dash.getParametersAsync();
+  const dateParams = params.filter(isDateLike);
+
+  return dateParams
+    .map((p) => {
+      const t = detectType(p);
+      return { name: p.name, label: t ? `${p.name} (${t})` : p.name };
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
+}
+
+async function hydrateConfigPanel(settings) {
+  const dash = await getDashboard();
+  const dashNameEl = qs("cfgDashName");
+  if (dashNameEl) dashNameEl.textContent = dash?.name || "-";
+
+  const items = await loadDateParameterItems();
+  if (items.length === 0) {
+    setCfgHint("날짜/시간 타입 파라미터를 찾지 못했습니다. 대시보드 파라미터 타입을 확인하세요.");
+  } else {
+    setCfgHint("");
+  }
+
+  const kindSel = qs("kind");
+  const startSel = qs("startParam");
+  const endSel = qs("endParam");
+  const formatInput = qs("format");
+  const rowEnd = qs("rowEnd");
+
+  if (kindSel) kindSel.value = settings.kind;
+  if (formatInput) formatInput.value = settings.format || DEFAULTS.format;
+
+  if (startSel) fillSelect(startSel, items, settings.startParam);
+  if (endSel) fillSelect(endSel, items, settings.endParam);
+
+  if (rowEnd) rowEnd.style.display = (settings.kind === "single") ? "none" : "";
+
+  if (kindSel) {
+    kindSel.onchange = () => {
+      const v = kindSel.value;
+      if (rowEnd) rowEnd.style.display = (v === "single") ? "none" : "";
     };
   }
 }
 
-/** 파라미터가 외부에서 바뀌면 UI도 따라가도록 이벤트 구독 */
-function bindParameterChangedListener() {
-  const dash = tableau.extensions.dashboardContent.dashboard;
+/** 설정 저장 */
+async function saveConfigFromPanel() {
+  try {
+    setCfgHint("");
 
-  // 중복 등록 방지 위해 한번만(간단히 flag 사용)
-  if (bindParameterChangedListener._bound) return;
-  bindParameterChangedListener._bound = true;
+    const kindSel = qs("kind");
+    const startSel = qs("startParam");
+    const endSel = qs("endParam");
+    const formatInput = qs("format");
 
-  dash.addEventListener(tableau.TableauEventType.ParameterChanged, async () => {
-    const settings = loadSettings();
-    if (!settings.startParam) return;
-    await syncUIWithRetry(settings, 6, 200);
+    const kind = (kindSel ? kindSel.value : DEFAULTS.kind) || DEFAULTS.kind;
+    const startParam = startSel ? startSel.value : "";
+    const endParam = endSel ? endSel.value : "";
+    const format = (formatInput ? formatInput.value : DEFAULTS.format).trim() || DEFAULTS.format;
+
+    if (!startParam) throw new Error("시작 파라미터를 선택하세요.");
+    if (kind === "range" && !endParam) throw new Error("종료 파라미터를 선택하세요.");
+
+    const s = tableau.extensions.settings;
+    s.set(SETTINGS_KEYS.kind, kind);
+    s.set(SETTINGS_KEYS.startParam, startParam);
+    s.set(SETTINGS_KEYS.endParam, kind === "single" ? "" : endParam);
+    s.set(SETTINGS_KEYS.format, format);
+    await s.saveAsync();
+
+    setCfgHint("저장 완료");
+    await render(); // 저장 반영 + 파라미터 리스너 재연결
+  } catch (e) {
+    setCfgHint(e?.message || String(e));
+  }
+}
+
+async function openConfigPanel() {
+  isConfigOpen = true;
+  const panel = qs("cfgPanel");
+  if (panel) {
+    panel.classList.add("open");
+    panel.setAttribute("aria-hidden", "false");
+  }
+
+  const settings = loadSettings();
+  await hydrateConfigPanel(settings);
+  await setFrameSize(FRAME_WIDTH, H_CONFIG);
+}
+
+async function closeConfigPanel() {
+  isConfigOpen = false;
+  const panel = qs("cfgPanel");
+  if (panel) {
+    panel.classList.remove("open");
+    panel.setAttribute("aria-hidden", "true");
+  }
+  await setFrameSize(FRAME_WIDTH, H_COLLAPSED);
+}
+
+/** 파라미터 변경 동기화: dashboard가 아니라 "파라미터 객체"에 이벤트 걸어야 함 */
+async function bindParameterChangedListeners(settings) {
+  // 기존 해제
+  unregisterParamHandlers.forEach((fn) => { try { fn(); } catch (_) {} });
+  unregisterParamHandlers = [];
+
+  if (!settings.startParam) return;
+
+  const dash = await getDashboard();
+  const params = await dash.getParametersAsync();
+
+  const targets = new Set();
+  targets.add(settings.startParam);
+  if (settings.kind === "range" && settings.endParam) targets.add(settings.endParam);
+
+  params.forEach((p) => {
+    if (!targets.has(p.name)) return;
+
+    const unregister = p.addEventListener(
+      tableau.TableauEventType.ParameterChanged,
+      async () => {
+        const s = loadSettings();
+        await syncUIWithRetry(s, 6, 200);
+      }
+    );
+
+    unregisterParamHandlers.push(unregister);
   });
+}
+
+/** 클릭/버튼 바인딩 */
+function bindHandlers() {
+  const bar = qs("rangeBar");
+  const settingsBtn = qs("settingsBtn");
+  const cfgCloseBtn = qs("cfgCloseBtn");
+  const cfgSaveBtn = qs("cfgSaveBtn");
+  const cfgPanel = qs("cfgPanel");
+
+  // 바 클릭 -> 달력 (설정 패널 열려있으면 무시)
+  if (bar) {
+    const handler = (e) => {
+      if (e.target && e.target.id === "settingsBtn") return;
+      openCalendar();
+    };
+    bar.onclick = handler;
+    bar.onmousedown = handler;
+  }
+
+  // 설정 버튼: authoring에서만 열림
+  if (settingsBtn) {
+    settingsBtn.onclick = async (e) => {
+      e.stopPropagation();
+      if (!isAuthoringMode()) return;
+      if (!isConfigOpen) await openConfigPanel();
+      else await closeConfigPanel();
+    };
+  }
+
+  // 설정 패널 내부 클릭은 바 클릭으로 전파되지 않게
+  if (cfgPanel) {
+    cfgPanel.onclick = (e) => e.stopPropagation();
+    cfgPanel.onmousedown = (e) => e.stopPropagation();
+  }
+
+  if (cfgCloseBtn) cfgCloseBtn.onclick = async () => { await closeConfigPanel(); };
+  if (cfgSaveBtn) cfgSaveBtn.onclick = async () => { await saveConfigFromPanel(); };
 }
 
 async function render() {
   const settings = loadSettings();
 
+  // 버튼 표시 제어
   const settingsBtn = qs("settingsBtn");
   if (settingsBtn) settingsBtn.style.display = isAuthoringMode() ? "inline-flex" : "none";
 
+  // 설정 패널은 authoring 아니면 닫기
+  if (!isAuthoringMode() && isConfigOpen) {
+    await closeConfigPanel();
+  }
+
+  // 값 표시 동기화
   if (!settings.startParam || (settings.kind === "range" && !settings.endParam)) {
     setHint(isAuthoringMode() ? "⚙ 설정에서 파라미터를 매핑하세요." : "조회기간 설정이 아직 완료되지 않았습니다.");
     setValueTexts("", "");
@@ -336,16 +475,14 @@ async function render() {
   }
 
   initFlatpickr(settings);
-  bindClickHandlers();
-  bindParameterChangedListener();
+  bindHandlers();
+  await bindParameterChangedListeners(settings);
 
-  // 초기 값 동기화
-  if (settings.startParam) {
-    await syncUIWithRetry(settings);
-  }
+  // 초기 값 불러오기
+  if (settings.startParam) await syncUIWithRetry(settings);
 
-  // 기본 프레임 높이(달력 닫힌 상태)
-  await setFrameSize(FRAME_WIDTH, FRAME_HEIGHT_COLLAPSED);
+  // 기본 프레임 높이(설정 열려있으면 유지)
+  await setFrameSize(FRAME_WIDTH, isConfigOpen ? H_CONFIG : H_COLLAPSED);
 }
 
 async function init() {
