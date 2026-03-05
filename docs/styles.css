@@ -72,3 +72,29 @@ html, body {
   color: rgba(0,0,0,0.65);
   min-height: 16px;
 }
+
+
+/* ===== Config Dialog ===== */
+.cfgPage { background: #fff; }
+.cfgPageWrap { padding: 14px; }
+
+.cfgHeader { margin-bottom: 10px; }
+.cfgTitle { font-size: 14px; font-weight: 800; }
+.cfgSub { margin-top: 4px; font-size: 12px; color: rgba(0,0,0,.6); }
+
+.cfgRow { margin-top: 10px; }
+.cfgLabel { display: block; font-size: 12px; color: rgba(0,0,0,.65); margin-bottom: 6px; }
+
+.cfgSelect, .cfgInput{
+  width: 100%;
+  height: 36px;
+  border-radius: 10px;
+  border: 1px solid rgba(0,0,0,.18);
+  padding: 0 10px;
+  font-size: 13px;
+  outline: none;
+}
+
+.cfgHint { min-height: 16px; margin-top: 10px; font-size: 12px; color: rgba(0,0,0,.6); }
+
+.cfgFooter { display: flex; justify-content: flex-end; gap: 8px; margin-top: 14px; }
