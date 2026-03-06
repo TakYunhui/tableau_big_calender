@@ -113,9 +113,7 @@ function updateValueHighlightState() {
 
   if (startEl) {
     const startChanged = !isSameDate(pendingStartDate, originalStartDate);
-    const showStart = shouldHighlight && startChanged;
-    startEl.classList.toggle("pending", showStart);
-    if (!showStart) startEl.classList.remove("changed");
+    startEl.classList.toggle("pending", shouldHighlight && startChanged);
   }
 
   if (endEl) {
@@ -123,9 +121,7 @@ function updateValueHighlightState() {
     const comparePendingEnd = settings.kind === "single" ? pendingStartDate : pendingEndDate;
     const compareOriginalEnd = settings.kind === "single" ? originalStartDate : originalEndDate;
     const endChanged = !isSameDate(comparePendingEnd, compareOriginalEnd);
-    const showEnd = shouldHighlight && endChanged && settings.kind === "range";
-    endEl.classList.toggle("pending", showEnd);
-    if (!showEnd) endEl.classList.remove("changed");
+    endEl.classList.toggle("pending", shouldHighlight && endChanged && settings.kind === "range");
   }
 }
 
@@ -372,7 +368,6 @@ function initFlatpickr(settings) {
           pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
           pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
         );
-
       } else if (calendarMode === "end") {
         const picked = selectedDates[0] || null;
         if (!picked) return;
@@ -382,7 +377,6 @@ function initFlatpickr(settings) {
           pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
           pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
         );
-
       } else {
         const start = selectedDates[0] || null;
         const end = selectedDates[1] || null;
@@ -428,6 +422,10 @@ function isSinglePickingMode() {
   return isCalendarOpen && (calendarMode === "start" || calendarMode === "end");
 }
 
+function isRangePickingMode() {
+  return isCalendarOpen && calendarMode === "range";
+}
+
 function isDateEditingState() {
   return isCalendarOpen;
 }
@@ -439,32 +437,57 @@ function canEnableRangeMode(settings) {
 
 function canEnableApply(settings) {
   if (!isDateEditingState()) return false;
-
   if (!pendingStartDate) return false;
   if (settings.kind === "range" && !pendingEndDate) return false;
-
   return true;
 }
 
-function updateActionStates() {
+function updatePrimaryModeButton() {
   const settings = loadSettings();
-  const rangeModeBtn = qs("rangeModeBtn");
-  const applyBtn = qs("applyBtn");
+  const btn = qs("rangeModeBtn");
+  if (!btn) return;
 
-  const rangeEnabled = canEnableRangeMode(settings);
-  const applyEnabled = canEnableApply(settings);
+  const isRangeOpen = isRangePickingMode();
+  btn.textContent = isRangeOpen ? "취소" : "기간변경";
 
-  if (rangeModeBtn) {
-    rangeModeBtn.disabled = !rangeEnabled;
-    rangeModeBtn.classList.toggle("inactive", !rangeEnabled);
-    rangeModeBtn.classList.toggle("active", rangeEnabled && isCalendarOpen && calendarMode === "range");
+  const enabled = isRangeOpen || canEnableRangeMode(settings);
+  btn.disabled = !enabled;
+
+  btn.classList.remove("btn-secondary-active", "btn-secondary-inactive", "btn-secondary-cancel");
+  if (isRangeOpen) {
+    btn.classList.add("btn-secondary-cancel");
+  } else if (enabled) {
+    btn.classList.add("btn-secondary-active");
+  } else {
+    btn.classList.add("btn-secondary-inactive");
   }
+}
 
-  if (applyBtn) {
-    applyBtn.disabled = !applyEnabled;
-    applyBtn.classList.toggle("ready", applyEnabled);
-    applyBtn.classList.toggle("inactive", !applyEnabled);
-  }
+function updateApplyButton() {
+  const settings = loadSettings();
+  const btn = qs("applyBtn");
+  if (!btn) return;
+
+  const enabled = canEnableApply(settings);
+  btn.disabled = !enabled;
+
+  btn.classList.remove("btn-primary-active", "btn-primary-inactive");
+  btn.classList.add(enabled ? "btn-primary-active" : "btn-primary-inactive");
+}
+
+function updateActionStates() {
+  updatePrimaryModeButton();
+  updateApplyButton();
+}
+
+function restorePendingToOriginal(settings) {
+  pendingStartDate = cloneDate(originalStartDate);
+  pendingEndDate = settings.kind === "single" ? cloneDate(originalStartDate) : cloneDate(originalEndDate);
+
+  setValueTexts(
+    pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
+    pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
+  );
 }
 
 function openCalendarFor(mode) {
@@ -493,6 +516,13 @@ function openCalendarFor(mode) {
 
   updateValueHighlightState();
   updateActionStates();
+}
+
+function cancelRangeSelection() {
+  const settings = loadSettings();
+  restorePendingToOriginal(settings);
+  closeCalendarUI();
+  setHint("");
 }
 
 async function applyPendingDates() {
@@ -708,6 +738,12 @@ function bindHandlers() {
   if (rangeModeBtn) {
     rangeModeBtn.onclick = (e) => {
       e.stopPropagation();
+
+      if (isRangePickingMode()) {
+        cancelRangeSelection();
+        return;
+      }
+
       const settings = loadSettings();
       if (!canEnableRangeMode(settings)) return;
       openCalendarFor("range");
