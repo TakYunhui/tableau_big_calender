@@ -5,63 +5,90 @@ html, body {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", sans-serif;
 }
 
-/* ===== 상단 바 480x60 고정 ===== */
+/* ===== 상단 바 ===== */
 .rangeBar {
   width: 480px;
-  height: 60px;
+  height: 45px;
   display: flex;
   align-items: center;
-  padding: 0 12px;
+  justify-content: space-between;
+  padding: 0 10px;
   background: transparent;
   position: relative;
-  cursor: pointer;
-  user-select: none;
   box-sizing: border-box;
 }
 
 .rangeLine {
   display: flex;
   align-items: center;
-  gap: 10px;
-  white-space: nowrap;
+  gap: 8px;
+  min-width: 0;
   overflow: hidden;
-  width: 100%;
-  padding-right: 40px;
+  white-space: nowrap;
 }
 
 .label {
-  font-size: 12px;
+  font-size: 16px;
   font-weight: 800;
-  color: rgba(0,0,0,0.70);
+  color: rgba(0, 0, 0, 0.75);
 }
 
 .value {
-  font-size: 13px;
+  font-size: 16px;
   font-weight: 900;
-  color: rgba(0,0,0,0.92);
+  color: rgba(0, 0, 0, 0.95);
+}
+
+.dateValue {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
 }
 
 .sep {
-  font-size: 12px;
+  font-size: 15px;
   font-weight: 800;
-  color: rgba(0,0,0,0.35);
+  color: rgba(0, 0, 0, 0.35);
 }
 
-.settingsBtn {
-  position: absolute;
-  right: 8px;
-  top: 8px;
-  height: 24px;
-  width: 28px;
+.topActions {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-shrink: 0;
+}
+
+.miniBtn {
+  height: 28px;
+  padding: 0 9px;
   border-radius: 8px;
-  border: 1px solid rgba(0,0,0,0.18);
-  background: rgba(255,255,255,0.75);
+  border: 1px solid rgba(0,0,0,0.16);
+  background: rgba(255,255,255,0.92);
   cursor: pointer;
-  display: none;
+  font-size: 12px;
+  font-weight: 700;
   line-height: 1;
 }
 
-/* fpHidden은 화면 밖으로 보내면 달력도 같이 밖으로 뜨는 경우가 있어 fixed 0,0 */
+.miniBtn.primary {
+  background: rgba(0,0,0,0.88);
+  color: #fff;
+  border-color: rgba(0,0,0,0.88);
+}
+
+.settingsBtn {
+  height: 28px;
+  width: 28px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  display: none;
+  font-size: 22px;
+  line-height: 1;
+  padding: 0;
+}
+
+/* 숨김 input */
 .fpHidden {
   position: fixed;
   left: 0;
@@ -73,85 +100,112 @@ html, body {
 }
 
 .hint {
-  margin-top: 4px;
-  font-size: 12px;
-  color: rgba(0,0,0,0.65);
-  min-height: 16px;
+  margin-top: 2px;
+  font-size: 11px;
+  color: rgba(0,0,0,0.62);
+  min-height: 14px;
 }
 
-/* ===== 하단 영역: 140px 고정(달력/설정 중 1개만 표시) ===== */
+/* ===== 하단 155px 영역 ===== */
 .calHost,
 .cfgPanel {
   width: 480px;
-  height: 140px;
+  height: 155px;
   box-sizing: border-box;
   display: none;
 }
 
-/* 열릴 때만 표시 */
-.calHost.open { display: block; }
-.cfgPanel.open { display: block; }
+.calHost.open,
+.cfgPanel.open {
+  display: block;
+}
 
-/* ===== 달력 영역 ===== */
+/* ===== 달력 ===== */
 .calHost {
   overflow: hidden;
-  border-top: 1px solid rgba(0,0,0,0.12);
-  background: rgba(255,255,255,0.95);
+  border-top: 1px solid rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.96);
   padding: 2px 4px 0 4px;
 }
 
-/* inline 달력을 calHost 안에서만 보이게 + 최대한 압축 */
 .calHost .flatpickr-calendar {
-  width: 472px !important;          /* 480 안에서 패딩 감안 */
+  width: 472px !important;
   max-width: 472px !important;
   position: static !important;
   margin: 0 !important;
   box-shadow: none !important;
   border: 0 !important;
   background: transparent !important;
+  display: block !important;
 }
 
-/* 월 이동 영역 높이 줄이기 */
 .calHost .flatpickr-months {
-  height: 22px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 28px !important;
   margin-bottom: 2px;
+  position: relative;
 }
 
 .calHost .flatpickr-month {
-  height: 22px !important;
+  height: 28px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
 }
 
 .calHost .flatpickr-current-month {
-  font-size: 12px !important;
-  padding-top: 1px !important;
-  line-height: 20px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: auto !important;
+  height: 28px !important;
+  padding: 0 !important;
+  left: auto !important;
+  font-size: 16px !important;
+  line-height: 1 !important;
+}
+
+.calHost .flatpickr-current-month .flatpickr-monthDropdown-months,
+.calHost .flatpickr-current-month input.cur-year {
+  font-size: 16px !important;
+  font-weight: 800;
+}
+
+.calHost .numInputWrapper {
+  width: 64px !important;
 }
 
 .calHost .flatpickr-prev-month,
 .calHost .flatpickr-next-month {
-  padding: 2px 6px !important;
-  top: 0 !important;
+  position: static !important;
+  padding: 0 8px !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  height: 28px !important;
 }
 
 .calHost .flatpickr-prev-month svg,
 .calHost .flatpickr-next-month svg {
-  width: 10px !important;
-  height: 10px !important;
+  width: 14px !important;
+  height: 14px !important;
 }
 
-/* 요일 줄 압축 */
 .calHost .flatpickr-weekdays {
-  height: 16px !important;
-  margin-bottom: 1px;
+  height: 22px !important;
+  margin-bottom: 2px;
 }
 
 .calHost .flatpickr-weekday {
-  height: 16px !important;
-  line-height: 16px !important;
-  font-size: 10px !important;
+  height: 22px !important;
+  line-height: 22px !important;
+  font-size: 13px !important;
+  font-weight: 800;
 }
 
-/* 날짜 영역 전체 폭 맞추기 */
 .calHost .flatpickr-days {
   width: 100% !important;
 }
@@ -162,16 +216,15 @@ html, body {
   max-width: 100% !important;
 }
 
-/* 날짜 셀 압축 */
 .calHost .flatpickr-day {
-  height: 16px !important;
-  line-height: 16px !important;
-  font-size: 10px !important;
+  height: 20px !important;
+  line-height: 20px !important;
+  font-size: 13px !important;
+  font-weight: 700;
   max-width: calc(100% / 7) !important;
   margin: 0 !important;
 }
 
-/* 선택 범위 색 보이게 */
 .calHost .flatpickr-day.startRange,
 .calHost .flatpickr-day.endRange,
 .calHost .flatpickr-day.selected {
@@ -180,9 +233,9 @@ html, body {
 
 /* ===== 설정 패널 ===== */
 .cfgPanel {
-  background: rgba(255,255,255,0.95);
-  border-top: 1px solid rgba(0,0,0,0.12);
-  padding: 10px 12px;
+  background: rgba(255,255,255,0.96);
+  border-top: 1px solid rgba(0,0,0,0.10);
+  padding: 8px 10px;
   overflow: auto;
 }
 
@@ -190,13 +243,13 @@ html, body {
 .cfgTitle { font-size: 13px; font-weight: 900; }
 .cfgSub { margin-top: 2px; font-size: 11px; color: rgba(0,0,0,.6); }
 
-.cfgRow { margin-top: 8px; }
+.cfgRow { margin-top: 6px; }
 .cfgLabel { display: block; font-size: 11px; color: rgba(0,0,0,.65); margin-bottom: 4px; }
 
 .cfgSelect, .cfgInput {
   width: 100%;
-  height: 32px;
-  border-radius: 10px;
+  height: 30px;
+  border-radius: 8px;
   border: 1px solid rgba(0,0,0,.18);
   padding: 0 10px;
   font-size: 12px;
@@ -214,9 +267,9 @@ html, body {
 }
 
 .btn {
-  height: 32px;
+  height: 30px;
   padding: 0 10px;
-  border-radius: 10px;
+  border-radius: 8px;
   border: 1px solid rgba(0,0,0,.18);
   background: rgba(0,0,0,.06);
   cursor: pointer;
@@ -224,9 +277,9 @@ html, body {
 }
 
 .btn.primary {
-  background: rgba(0,0,0,.85);
+  background: rgba(0,0,0,.88);
   color: #fff;
-  border-color: rgba(0,0,0,.85);
+  border-color: rgba(0,0,0,.88);
 }
 
 .btn.ghost {
