@@ -3,52 +3,70 @@ html, body {
   padding: 0;
   background: transparent;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", sans-serif;
+  overflow: hidden; /* 확장 전체 스크롤 제거 */
 }
 
 /* ===== 전체 폭 600 ===== */
 .rangeBar {
   width: 600px;
-  height: 45px;
+  height: 46px;
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 10px;
   padding: 0 10px;
   background: transparent;
   position: relative;
   box-sizing: border-box;
+  overflow: hidden;
 }
 
 .rangeLine {
   display: flex;
   align-items: center;
-  gap: 8px;
+  gap: 6px; /* 날짜/버튼 사이 간격 축소 */
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
+  flex: 1 1 auto;
 }
 
 .label {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 800;
   color: rgba(0, 0, 0, 0.75);
 }
 
 .value {
-  font-size: 16px;
+  font-size: 15px;
   font-weight: 900;
   color: rgba(0, 0, 0, 0.95);
+  transition: color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
 }
 
 .dateValue {
   cursor: pointer;
   text-decoration: underline;
   text-underline-offset: 2px;
+  border-radius: 6px;
+  padding: 1px 4px;
+}
+
+.dateValue.pending {
+  color: #3170f5;
+}
+
+.dateValue.changed {
+  color: #3170f5;
+  background: rgba(49, 112, 245, 0.10);
+  box-shadow: 0 0 0 1px rgba(49, 112, 245, 0.18) inset;
 }
 
 .sep {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
-  color: rgba(0, 0, 0, 0.35);
+  color: rgba(0, 0, 0, 0.28);
+  margin: 0 1px;
 }
 
 .topActions {
@@ -59,21 +77,46 @@ html, body {
 }
 
 .miniBtn {
-  height: 28px;
-  padding: 0 9px;
-  border-radius: 8px;
-  border: 1px solid rgba(0,0,0,0.16);
-  background: rgba(255,255,255,0.92);
+  height: 30px;
+  min-width: 74px; /* 버튼 가로 영역 증가 */
+  padding: 0 12px;
+  border-radius: 9px;
+  border: 1px solid rgba(0,0,0,0.14);
+  background: #eef2f7;
+  color: rgba(0,0,0,0.58);
   cursor: pointer;
   font-size: 12px;
-  font-weight: 700;
+  font-weight: 800;
   line-height: 1;
+  transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease, opacity 0.16s ease;
 }
 
+.miniBtn:hover:not(:disabled) {
+  background: #e6ebf3;
+}
+
+.miniBtn.inactive,
+.miniBtn:disabled {
+  background: #eef2f7;
+  color: rgba(0,0,0,0.45);
+  border-color: rgba(0,0,0,0.10);
+  cursor: default;
+  opacity: 1;
+}
+
+.miniBtn.active,
+.miniBtn.ready,
 .miniBtn.primary {
-  background: rgba(0,0,0,0.88);
+  background: #3170f5;
   color: #fff;
-  border-color: rgba(0,0,0,0.88);
+  border-color: #3170f5;
+}
+
+.miniBtn.active:hover:not(:disabled),
+.miniBtn.ready:hover:not(:disabled),
+.miniBtn.primary:hover:not(:disabled) {
+  background: #255fe0;
+  border-color: #255fe0;
 }
 
 .settingsBtn {
@@ -103,13 +146,15 @@ html, body {
   font-size: 11px;
   color: rgba(0,0,0,0.62);
   min-height: 14px;
+  padding: 0 10px;
+  box-sizing: border-box;
 }
 
 /* ===== 하단 영역 ===== */
 .calHost,
 .cfgPanel {
   width: 600px;
-  height: 155px;
+  height: 178px;
   box-sizing: border-box;
   display: none;
 }
@@ -121,19 +166,20 @@ html, body {
 
 /* ===== 달력 ===== */
 .calHost {
-  overflow-y: auto;   /* 핵심: 스크롤 */
+  overflow-y: auto;     /* 달력만 스크롤 */
   overflow-x: hidden;
   border-top: 1px solid rgba(0,0,0,0.10);
   background: rgba(255,255,255,0.96);
-  padding: 2px 4px 0 4px;
+  padding: 2px 8px 0 8px;
+  scrollbar-width: thin;
 }
 
 .calHost .flatpickr-calendar {
-  width: 592px !important;
-  max-width: 592px !important;
+  width: 584px !important;
+  max-width: 584px !important;
   min-height: max-content !important;
   position: static !important;
-  margin: 0 !important;
+  margin: 0 auto !important;
   box-shadow: none !important;
   border: 0 !important;
   background: transparent !important;
@@ -147,6 +193,9 @@ html, body {
   height: 30px !important;
   margin-bottom: 2px;
   position: relative;
+  gap: 6px; /* 화살표를 더 안쪽으로 */
+  padding: 0 16px; /* 양끝 너무 붙지 않게 */
+  box-sizing: border-box;
 }
 
 .calHost .flatpickr-month {
@@ -154,6 +203,7 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
+  flex: 0 1 auto;
 }
 
 .calHost .flatpickr-current-month {
@@ -167,6 +217,8 @@ html, body {
   left: auto !important;
   font-size: 16px !important;
   line-height: 1 !important;
+  position: static !important;
+  flex: 0 1 auto;
 }
 
 .calHost .flatpickr-current-month .numInputWrapper {
@@ -187,11 +239,21 @@ html, body {
 .calHost .flatpickr-prev-month,
 .calHost .flatpickr-next-month {
   position: static !important;
-  padding: 0 8px !important;
+  padding: 0 4px !important; /* 더 안쪽 */
+  margin: 0 !important;
   display: flex !important;
   align-items: center;
   justify-content: center;
   height: 30px !important;
+  width: 24px !important;
+  min-width: 24px !important;
+  color: rgba(0,0,0,0.78) !important;
+  flex: 0 0 24px;
+}
+
+.calHost .flatpickr-prev-month:hover,
+.calHost .flatpickr-next-month:hover {
+  color: #3170f5 !important;
 }
 
 .calHost .flatpickr-prev-month svg,
@@ -224,8 +286,8 @@ html, body {
 }
 
 .calHost .flatpickr-day {
-  height: 22px !important;
-  line-height: 22px !important;
+  height: 24px !important;
+  line-height: 24px !important;
   font-size: 13px !important;
   font-weight: 700;
   max-width: calc(100% / 7) !important;
@@ -236,6 +298,15 @@ html, body {
 .calHost .flatpickr-day.endRange,
 .calHost .flatpickr-day.selected {
   border-radius: 4px !important;
+  background: #3170f5 !important;
+  border-color: #3170f5 !important;
+  color: #fff !important;
+}
+
+.calHost .flatpickr-day.inRange {
+  background: rgba(49, 112, 245, 0.12) !important;
+  border-color: transparent !important;
+  box-shadow: none !important;
 }
 
 /* ===== 설정 패널 ===== */
