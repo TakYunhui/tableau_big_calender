@@ -13,7 +13,7 @@ const DEFAULTS = {
 };
 
 const FRAME_WIDTH = 600;
-const FRAME_HEIGHT = 320;
+const FRAME_HEIGHT = 360;
 
 let fp = null;
 let unregisterParamHandlers = [];
