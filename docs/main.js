@@ -7,9 +7,11 @@ const SETTINGS_KEYS = {
   format: "date_format",
 };
 
-const DEFAULTS = { kind: "range", format: "Y-m-d" };
+const DEFAULTS = {
+  kind: "range",
+  format: "Y-m-d",
+};
 
-// ✅ 프레임 고정 480x200 (확장/축소 금지)
 const FRAME_WIDTH = 480;
 const FRAME_HEIGHT = 200;
 
@@ -19,7 +21,13 @@ let unregisterParamHandlers = [];
 let isConfigOpen = false;
 let isCalendarOpen = false;
 
-function qs(id) { return document.getElementById(id); }
+let pendingStartDate = null;
+let pendingEndDate = null;
+let calendarMode = "range"; // "start" | "end" | "range"
+
+function qs(id) {
+  return document.getElementById(id);
+}
 
 function setHint(msg) {
   const el = qs("hint");
@@ -77,6 +85,12 @@ function toISODateOnly(d) {
   return `${y}-${m}-${day}`;
 }
 
+function parseDisplayToDate(text) {
+  if (!text || text === "-") return null;
+  const d = new Date(text);
+  return Number.isNaN(d.getTime()) ? null : d;
+}
+
 function setValueTexts(startDisplay, endDisplay) {
   const startEl = qs("startText");
   const endEl = qs("endText");
@@ -92,7 +106,6 @@ function numberToDateDisplay(n) {
     return Number.isNaN(d.getTime()) ? String(n) : toISODateOnly(d);
   }
 
-  // 엑셀/테이블로 "일수" 들어온 경우 추정(Cloud에서 0 문제 회피용)
   const base = new Date(Date.UTC(1899, 11, 30));
   const d = new Date(base.getTime() + n * 24 * 60 * 60 * 1000);
   return Number.isNaN(d.getTime()) ? String(n) : toISODateOnly(d);
@@ -102,7 +115,6 @@ function getParamDisplay(p) {
   if (!p || !p.currentValue) return "";
   const cv = p.currentValue;
 
-  // formattedValue가 가장 안정적
   if (typeof cv.formattedValue === "string") {
     const fv = cv.formattedValue.trim();
     if (fv !== "" && fv !== "0") return fv;
@@ -129,6 +141,8 @@ function getParamDisplay(p) {
 
 async function syncUIFromCurrentParameterValues(settings) {
   if (!settings.startParam) {
+    pendingStartDate = null;
+    pendingEndDate = null;
     setValueTexts("", "");
     return;
   }
@@ -145,6 +159,9 @@ async function syncUIFromCurrentParameterValues(settings) {
     const pEnd = map.get(settings.endParam);
     endDisplay = getParamDisplay(pEnd);
   }
+
+  pendingStartDate = parseDisplayToDate(startDisplay);
+  pendingEndDate = parseDisplayToDate(endDisplay);
 
   setValueTexts(startDisplay, endDisplay);
 }
@@ -166,14 +183,17 @@ async function syncUIWithRetry(settings, tries = 8, delayMs = 250) {
 
 function ensureFlatpickrLoaded() {
   if (typeof window.flatpickr === "undefined") {
-    setHint("flatpickr 로드 실패: ./lib/flatpickr.min.js 경로/순서 확인");
+    setHint("flatpickr 로드 실패");
     return false;
   }
   return true;
 }
 
 function destroyFP() {
-  if (fp) { fp.destroy(); fp = null; }
+  if (fp) {
+    fp.destroy();
+    fp = null;
+  }
 }
 
 function closeConfigPanelUI() {
@@ -200,7 +220,6 @@ function openCalendarUI() {
   if (h) h.classList.add("open");
 }
 
-
 function getKoLocale() {
   return {
     weekdays: {
@@ -219,7 +238,6 @@ function getKoLocale() {
   };
 }
 
-/** ✅ 200 고정이므로 달력은 calHost(하단 140) 안에 inline으로 박는다 */
 function initFlatpickr(settings) {
   destroyFP();
   if (!ensureFlatpickrLoaded()) return;
@@ -227,72 +245,62 @@ function initFlatpickr(settings) {
   const input = qs("fpHidden");
   const host = qs("calHost");
   if (!input || !host) {
-    setHint("fpHidden 또는 calHost가 없습니다. index.html id 확인 필요");
+    setHint("fpHidden 또는 calHost가 없습니다.");
     return;
   }
 
-  // host 초기화(중복 방지)
   host.innerHTML = "";
 
-  const mode = settings.kind === "single" ? "single" : "range";
-
-  // 한글 locale 직접 정의
-  const koLocale = {
-    weekdays: {
-      shorthand: ["일", "월", "화", "수", "목", "금", "토"],
-      longhand: ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"]
-    },
-    months: {
-      shorthand: ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"],
-      longhand: ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"]
-    },
-    firstDayOfWeek: 0,
-    rangeSeparator: " ~ ",
-    scrollTitle: "스크롤하여 증가",
-    toggleTitle: "클릭하여 전환",
-    time_24hr: true
-  };
+  const fpMode = calendarMode === "range" ? "range" : "single";
 
   fp = flatpickr(input, {
-    mode: mode,
+    mode: fpMode,
     dateFormat: settings.format || DEFAULTS.format,
-
     allowInput: false,
     clickOpens: false,
-
     inline: true,
     appendTo: host,
-
-    locale: koLocale,
-
+    locale: getKoLocale(),
     monthSelectorType: "static",
     prevArrow: "<",
     nextArrow: ">",
 
-    onOpen: () => setHint(""),
+    formatDate: (date, format, locale) => {
+      if (format === "Y-m-d") return toISODateOnly(date);
+      return flatpickr.formatDate(date, format);
+    },
 
-    onChange: async (selectedDates) => {
-      const start = selectedDates[0] || null;
-      const end = settings.kind === "single" ? start : (selectedDates[1] || null);
+    onChange: (selectedDates) => {
+      if (calendarMode === "start") {
+        const picked = selectedDates[0] || null;
+        if (!picked) return;
+
+        pendingStartDate = picked;
+        if (pendingEndDate && pendingStartDate > pendingEndDate) {
+          pendingEndDate = pendingStartDate;
+        }
+      } else if (calendarMode === "end") {
+        const picked = selectedDates[0] || null;
+        if (!picked) return;
+
+        pendingEndDate = picked;
+        if (pendingStartDate && pendingEndDate < pendingStartDate) {
+          pendingStartDate = pendingEndDate;
+        }
+      } else {
+        const start = selectedDates[0] || null;
+        const end = selectedDates[1] || null;
+        pendingStartDate = start;
+        pendingEndDate = end || null;
+      }
 
       setValueTexts(
-        start ? toISODateOnly(start) : "-",
-        end ? toISODateOnly(end) : "-"
+        pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
+        pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
       );
-
-      if (settings.kind === "range" && !end) return;
-
-      try {
-        await applyDatesToParameters(settings, start, end);
-        setHint("");
-        await syncUIWithRetry(settings, 4, 150);
-      } catch (e) {
-        setHint(e?.message || String(e));
-      }
     }
   });
 
-  // 기본: 닫힘
   closeCalendarUI();
 }
 
@@ -317,20 +325,55 @@ async function applyDatesToParameters(settings, start, end) {
   }
 }
 
-/** 상단 바 클릭 => 달력 토글 (설정 열려있으면 달력 금지) */
-function toggleCalendar() {
+function openCalendarFor(mode) {
   if (isConfigOpen) return;
+
+  calendarMode = mode;
+  const settings = loadSettings();
+  initFlatpickr(settings);
+
+  closeConfigPanelUI();
+  openCalendarUI();
+
   if (!fp) return;
 
-  if (isCalendarOpen) {
-    closeCalendarUI();
+  if (mode === "start" && pendingStartDate) {
+    fp.setDate(pendingStartDate, false);
+  } else if (mode === "end" && pendingEndDate) {
+    fp.setDate(pendingEndDate, false);
+  } else if (mode === "range" && pendingStartDate && pendingEndDate) {
+    fp.setDate([pendingStartDate, pendingEndDate], false);
   } else {
-    closeConfigPanelUI();
-    openCalendarUI();
+    fp.clear();
   }
 }
 
-/** ===== 설정 패널 ===== */
+async function applyPendingDates() {
+  const settings = loadSettings();
+
+  if (!pendingStartDate) {
+    setHint("시작날짜를 선택하세요.");
+    return;
+  }
+
+  const finalEnd = settings.kind === "single" ? pendingStartDate : pendingEndDate;
+
+  if (settings.kind === "range" && !finalEnd) {
+    setHint("종료날짜를 선택하세요.");
+    return;
+  }
+
+  try {
+    await applyDatesToParameters(settings, pendingStartDate, finalEnd);
+    setHint("");
+    closeCalendarUI();
+    await syncUIWithRetry(settings, 4, 150);
+  } catch (e) {
+    setHint(e?.message || String(e));
+  }
+}
+
+/* ===== 설정 패널 ===== */
 function detectType(p) {
   return (p?.dataType || p?.parameterType || p?.type || "").toString();
 }
@@ -343,6 +386,7 @@ function isDateLike(p) {
 
 function fillSelect(selectEl, items, selectedValue) {
   selectEl.innerHTML = "";
+
   const empty = document.createElement("option");
   empty.value = "";
   empty.textContent = "선택";
@@ -361,7 +405,9 @@ function fillSelect(selectEl, items, selectedValue) {
 async function loadDateParameterItems() {
   const dash = await getDashboard();
   const params = await dash.getParametersAsync();
-  return params.filter(isDateLike)
+
+  return params
+    .filter(isDateLike)
     .map((p) => {
       const t = detectType(p);
       return { name: p.name, label: t ? `${p.name} (${t})` : p.name };
@@ -389,12 +435,12 @@ async function hydrateConfigPanel(settings) {
   if (startSel) fillSelect(startSel, items, settings.startParam);
   if (endSel) fillSelect(endSel, items, settings.endParam);
 
-  if (rowEnd) rowEnd.style.display = (settings.kind === "single") ? "none" : "";
+  if (rowEnd) rowEnd.style.display = settings.kind === "single" ? "none" : "";
 
   if (kindSel) {
     kindSel.onchange = () => {
       const v = kindSel.value;
-      if (rowEnd) rowEnd.style.display = (v === "single") ? "none" : "";
+      if (rowEnd) rowEnd.style.display = v === "single" ? "none" : "";
     };
   }
 }
@@ -444,9 +490,10 @@ async function toggleConfigPanel() {
   }
 }
 
-/** 파라미터 외부 변경 => UI 동기화(파라미터 객체 이벤트) */
 async function bindParameterChangedListeners(settings) {
-  unregisterParamHandlers.forEach((fn) => { try { fn(); } catch (_) {} });
+  unregisterParamHandlers.forEach((fn) => {
+    try { fn(); } catch (_) {}
+  });
   unregisterParamHandlers = [];
 
   if (!settings.startParam) return;
@@ -473,24 +520,44 @@ async function bindParameterChangedListeners(settings) {
 }
 
 function bindHandlers() {
-  const bar = qs("rangeBar");
+  const startText = qs("startText");
+  const endText = qs("endText");
+  const rangeModeBtn = qs("rangeModeBtn");
+  const applyBtn = qs("applyBtn");
   const settingsBtn = qs("settingsBtn");
   const cfgCloseBtn = qs("cfgCloseBtn");
   const cfgSaveBtn = qs("cfgSaveBtn");
   const cfgPanel = qs("cfgPanel");
   const calHost = qs("calHost");
 
-  // bar 클릭 => 달력 토글
-  if (bar) {
-    const handler = (e) => {
-      if (e.target && e.target.id === "settingsBtn") return;
-      toggleCalendar();
+  if (startText) {
+    startText.onclick = (e) => {
+      e.stopPropagation();
+      openCalendarFor("start");
     };
-    bar.onclick = handler;
-    bar.onmousedown = handler;
   }
 
-  // 설정 버튼
+  if (endText) {
+    endText.onclick = (e) => {
+      e.stopPropagation();
+      openCalendarFor("end");
+    };
+  }
+
+  if (rangeModeBtn) {
+    rangeModeBtn.onclick = (e) => {
+      e.stopPropagation();
+      openCalendarFor("range");
+    };
+  }
+
+  if (applyBtn) {
+    applyBtn.onclick = async (e) => {
+      e.stopPropagation();
+      await applyPendingDates();
+    };
+  }
+
   if (settingsBtn) {
     settingsBtn.onclick = async (e) => {
       e.stopPropagation();
@@ -498,11 +565,11 @@ function bindHandlers() {
     };
   }
 
-  // 내부 클릭 전파 방지
   if (cfgPanel) {
     cfgPanel.onclick = (e) => e.stopPropagation();
     cfgPanel.onmousedown = (e) => e.stopPropagation();
   }
+
   if (calHost) {
     calHost.onclick = (e) => e.stopPropagation();
     calHost.onmousedown = (e) => e.stopPropagation();
@@ -517,14 +584,11 @@ async function render() {
 
   const settings = loadSettings();
 
-  // settings 버튼 표시 제어
   const settingsBtn = qs("settingsBtn");
   if (settingsBtn) settingsBtn.style.display = isAuthoringMode() ? "inline-flex" : "none";
 
-  // viewing이면 설정 패널 닫기
   if (!isAuthoringMode()) closeConfigPanelUI();
 
-  // 설정 미완료 안내
   if (!settings.startParam || (settings.kind === "range" && !settings.endParam)) {
     setHint(isAuthoringMode() ? "⚙ 설정에서 파라미터를 매핑하세요." : "조회기간 설정이 아직 완료되지 않았습니다.");
     setValueTexts("", "");
@@ -536,7 +600,9 @@ async function render() {
   bindHandlers();
   await bindParameterChangedListeners(settings);
 
-  if (settings.startParam) await syncUIWithRetry(settings);
+  if (settings.startParam) {
+    await syncUIWithRetry(settings);
+  }
 }
 
 async function init() {
