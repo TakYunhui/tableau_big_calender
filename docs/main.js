@@ -12,7 +12,7 @@ const DEFAULTS = {
   format: "Y-m-d",
 };
 
-const FRAME_WIDTH = 480;
+const FRAME_WIDTH = 600;
 const FRAME_HEIGHT = 200;
 
 let fp = null;
@@ -479,7 +479,8 @@ async function saveConfigFromPanel() {
     s.set(SETTINGS_KEYS.format, format);
     await s.saveAsync();
 
-    setCfgHint("저장 완료");
+    closeConfigPanelUI();
+    setCfgHint("");
     await render();
   } catch (e) {
     setCfgHint(e?.message || String(e));
