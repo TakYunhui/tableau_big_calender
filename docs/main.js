@@ -13,13 +13,14 @@ const DEFAULTS = {
 };
 
 const FRAME_WIDTH = 600;
-const FRAME_HEIGHT = 240;
+const FRAME_HEIGHT = 280;
 
 let fp = null;
 let unregisterParamHandlers = [];
 
 let isConfigOpen = false;
 let isCalendarOpen = false;
+let isQuickOpen = false;
 let isApplying = false;
 
 let pendingStartDate = null;
@@ -30,6 +31,7 @@ let originalEndDate = null;
 let calendarMode = "range"; // "start" | "end" | "range"
 let hasUserSelectionInCurrentOpen = false;
 let toastTimer = null;
+let selectedQuickType = "";
 
 function qs(id) {
   return document.getElementById(id);
@@ -124,7 +126,7 @@ function updateValueHighlightState() {
   const startEl = qs("startText");
   const endEl = qs("endText");
 
-  const shouldHighlight = isCalendarOpen && hasUserSelectionInCurrentOpen;
+  const shouldHighlight = (isCalendarOpen || isQuickOpen) && hasUserSelectionInCurrentOpen;
 
   if (startEl) {
     const startChanged = !isSameDate(pendingStartDate, originalStartDate);
@@ -198,7 +200,9 @@ async function syncUIFromCurrentParameterValues(settings) {
     originalStartDate = null;
     originalEndDate = null;
     hasUserSelectionInCurrentOpen = false;
+    selectedQuickType = "";
     setValueTexts("", "");
+    updateQuickSelectionUI();
     updateActionStates();
     return;
   }
@@ -223,8 +227,10 @@ async function syncUIFromCurrentParameterValues(settings) {
   originalEndDate = cloneDate(pendingEndDate);
 
   hasUserSelectionInCurrentOpen = false;
+  selectedQuickType = "";
 
   setValueTexts(startDisplay, endDisplay);
+  updateQuickSelectionUI();
   updateActionStates();
 }
 
@@ -272,7 +278,6 @@ function openConfigPanelUI() {
 
 function closeCalendarUI() {
   isCalendarOpen = false;
-  hasUserSelectionInCurrentOpen = false;
   const h = qs("calHost");
   if (h) h.classList.remove("open");
   updateValueHighlightState();
@@ -281,8 +286,23 @@ function closeCalendarUI() {
 
 function openCalendarUI() {
   isCalendarOpen = true;
-  hasUserSelectionInCurrentOpen = false;
   const h = qs("calHost");
+  if (h) h.classList.add("open");
+  updateValueHighlightState();
+  updateActionStates();
+}
+
+function closeQuickPanelUI() {
+  isQuickOpen = false;
+  const h = qs("quickHost");
+  if (h) h.classList.remove("open");
+  updateValueHighlightState();
+  updateActionStates();
+}
+
+function openQuickPanelUI() {
+  isQuickOpen = true;
+  const h = qs("quickHost");
   if (h) h.classList.add("open");
   updateValueHighlightState();
   updateActionStates();
@@ -373,6 +393,8 @@ function initFlatpickr(settings) {
 
     onChange: (selectedDates) => {
       hasUserSelectionInCurrentOpen = true;
+      selectedQuickType = "";
+      updateQuickSelectionUI();
 
       if (calendarMode === "start") {
         const picked = selectedDates[0] || null;
@@ -441,13 +463,31 @@ function isRangePickingMode() {
   return isCalendarOpen && calendarMode === "range";
 }
 
+function isQuickPickingMode() {
+  return isQuickOpen;
+}
+
 function isDateEditingState() {
-  return isCalendarOpen;
+  return isCalendarOpen || isQuickOpen;
 }
 
 function canEnableRangeMode(settings) {
   if (settings.kind !== "range") return false;
-  return !isSinglePickingMode();
+  return !isSinglePickingMode() && !isQuickPickingMode();
+}
+
+function canEnableQuickMode() {
+  return !isSinglePickingMode() && !isRangePickingMode();
+}
+
+function hasPendingChange(settings) {
+  const comparePendingEnd = settings.kind === "single" ? pendingStartDate : pendingEndDate;
+  const compareOriginalEnd = settings.kind === "single" ? originalStartDate : originalEndDate;
+
+  return (
+    !isSameDate(pendingStartDate, originalStartDate) ||
+    !isSameDate(comparePendingEnd, compareOriginalEnd)
+  );
 }
 
 function canEnableApply(settings) {
@@ -455,6 +495,7 @@ function canEnableApply(settings) {
   if (!isDateEditingState()) return false;
   if (!pendingStartDate) return false;
   if (settings.kind === "range" && !pendingEndDate) return false;
+  if (!hasPendingChange(settings)) return false;
   return true;
 }
 
@@ -471,6 +512,26 @@ function updatePrimaryModeButton() {
 
   btn.classList.remove("btn-secondary-active", "btn-secondary-inactive", "btn-secondary-cancel");
   if (isRangeOpen) {
+    btn.classList.add(enabled ? "btn-secondary-cancel" : "btn-secondary-inactive");
+  } else if (enabled) {
+    btn.classList.add("btn-secondary-active");
+  } else {
+    btn.classList.add("btn-secondary-inactive");
+  }
+}
+
+function updateQuickModeButton() {
+  const btn = qs("quickModeBtn");
+  if (!btn) return;
+
+  const isOpen = isQuickPickingMode();
+  btn.textContent = isOpen ? "취소" : "퀵선택";
+
+  const enabled = !isApplying && (isOpen || canEnableQuickMode());
+  btn.disabled = !enabled;
+
+  btn.classList.remove("btn-secondary-active", "btn-secondary-inactive", "btn-secondary-cancel");
+  if (isOpen) {
     btn.classList.add(enabled ? "btn-secondary-cancel" : "btn-secondary-inactive");
   } else if (enabled) {
     btn.classList.add("btn-secondary-active");
@@ -500,17 +561,22 @@ function updateApplyButton() {
 
 function updateActionStates() {
   updatePrimaryModeButton();
+  updateQuickModeButton();
   updateApplyButton();
 }
 
 function restorePendingToOriginal(settings) {
   pendingStartDate = cloneDate(originalStartDate);
   pendingEndDate = settings.kind === "single" ? cloneDate(originalStartDate) : cloneDate(originalEndDate);
+  selectedQuickType = "";
+  hasUserSelectionInCurrentOpen = false;
 
   setValueTexts(
     pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
     pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
   );
+
+  updateQuickSelectionUI();
 }
 
 function openCalendarFor(mode) {
@@ -518,10 +584,15 @@ function openCalendarFor(mode) {
 
   calendarMode = mode;
   const settings = loadSettings();
+
+  closeQuickPanelUI();
   initFlatpickr(settings);
 
-  closeConfigPanelUI();
   openCalendarUI();
+
+  hasUserSelectionInCurrentOpen = false;
+  selectedQuickType = "";
+  updateQuickSelectionUI();
 
   if (!fp) return;
 
@@ -545,6 +616,13 @@ function cancelRangeSelection() {
   const settings = loadSettings();
   restorePendingToOriginal(settings);
   closeCalendarUI();
+  setHint("");
+}
+
+function cancelQuickSelection() {
+  const settings = loadSettings();
+  restorePendingToOriginal(settings);
+  closeQuickPanelUI();
   setHint("");
 }
 
@@ -592,6 +670,7 @@ async function applyPendingDates() {
     await applyDatesToParameters(settings, pendingStartDate, finalEnd);
 
     closeCalendarUI();
+    closeQuickPanelUI();
     await syncUIWithRetry(settings, 4, 150);
 
     setHint("");
@@ -603,6 +682,91 @@ async function applyPendingDates() {
     isApplying = false;
     updateActionStates();
   }
+}
+
+/* ===== 퀵 선택 ===== */
+function startOfDay(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function getTodayRange() {
+  const today = startOfDay(new Date());
+  return { start: today, end: today };
+}
+
+function getThisWeekRange() {
+  const today = startOfDay(new Date());
+  const day = today.getDay(); // 0:일 ~ 6:토
+  const diffToMonday = day === 0 ? -6 : 1 - day;
+
+  const start = new Date(today);
+  start.setDate(today.getDate() + diffToMonday);
+
+  return { start: startOfDay(start), end: today };
+}
+
+function getThisMonthRange() {
+  const today = startOfDay(new Date());
+  const start = new Date(today.getFullYear(), today.getMonth(), 1);
+  return { start: startOfDay(start), end: today };
+}
+
+function getYtdRange() {
+  const today = startOfDay(new Date());
+  const start = new Date(today.getFullYear(), 0, 1);
+  return { start: startOfDay(start), end: today };
+}
+
+function getQuickRange(type) {
+  switch (type) {
+    case "today":
+      return getTodayRange();
+    case "thisWeek":
+      return getThisWeekRange();
+    case "thisMonth":
+      return getThisMonthRange();
+    case "ytd":
+      return getYtdRange();
+    default:
+      return null;
+  }
+}
+
+function applyQuickSelection(type) {
+  if (isApplying || isConfigOpen || !isQuickOpen) return;
+
+  const settings = loadSettings();
+  const range = getQuickRange(type);
+  if (!range) return;
+
+  hasUserSelectionInCurrentOpen = true;
+  selectedQuickType = type;
+
+  pendingStartDate = cloneDate(range.start);
+  pendingEndDate = settings.kind === "single"
+    ? cloneDate(range.start)
+    : cloneDate(range.end);
+
+  setValueTexts(
+    pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
+    (settings.kind === "single" ? pendingStartDate : pendingEndDate)
+      ? toISODateOnly(settings.kind === "single" ? pendingStartDate : pendingEndDate)
+      : "-"
+  );
+
+  setHint("");
+  updateQuickSelectionUI();
+  updateActionStates();
+}
+
+function updateQuickSelectionUI() {
+  const quickBtns = document.querySelectorAll(".quickBtn");
+  quickBtns.forEach((btn) => {
+    const type = btn.getAttribute("data-quick");
+    btn.classList.toggle("selected", type === selectedQuickType);
+  });
 }
 
 /* ===== 설정 패널 ===== */
@@ -717,6 +881,7 @@ async function toggleConfigPanel() {
     setHint("");
   } else {
     closeCalendarUI();
+    closeQuickPanelUI();
     openConfigPanelUI();
     const settings = loadSettings();
     await hydrateConfigPanel(settings);
@@ -756,12 +921,15 @@ function bindHandlers() {
   const startText = qs("startText");
   const endText = qs("endText");
   const rangeModeBtn = qs("rangeModeBtn");
+  const quickModeBtn = qs("quickModeBtn");
   const applyBtn = qs("applyBtn");
   const settingsBtn = qs("settingsBtn");
   const cfgCloseBtn = qs("cfgCloseBtn");
   const cfgSaveBtn = qs("cfgSaveBtn");
   const cfgPanel = qs("cfgPanel");
   const calHost = qs("calHost");
+  const quickHost = qs("quickHost");
+  const quickBtns = document.querySelectorAll(".quickBtn");
 
   if (startText) {
     startText.onclick = (e) => {
@@ -794,6 +962,36 @@ function bindHandlers() {
     };
   }
 
+  if (quickModeBtn) {
+    quickModeBtn.onclick = (e) => {
+      e.stopPropagation();
+
+      if (isApplying) return;
+
+      if (isQuickPickingMode()) {
+        cancelQuickSelection();
+        return;
+      }
+
+      if (!canEnableQuickMode()) return;
+
+      closeCalendarUI();
+      openQuickPanelUI();
+      hasUserSelectionInCurrentOpen = false;
+      selectedQuickType = "";
+      updateQuickSelectionUI();
+      updateActionStates();
+    };
+  }
+
+  quickBtns.forEach((btn) => {
+    btn.onclick = (e) => {
+      e.stopPropagation();
+      const type = btn.getAttribute("data-quick");
+      applyQuickSelection(type);
+    };
+  });
+
   if (applyBtn) {
     applyBtn.onclick = async (e) => {
       e.stopPropagation();
@@ -820,8 +1018,33 @@ function bindHandlers() {
     calHost.onmousedown = (e) => e.stopPropagation();
   }
 
+  if (quickHost) {
+    quickHost.onclick = (e) => e.stopPropagation();
+    quickHost.onmousedown = (e) => e.stopPropagation();
+  }
+
   if (cfgCloseBtn) cfgCloseBtn.onclick = async () => { closeConfigPanelUI(); };
   if (cfgSaveBtn) cfgSaveBtn.onclick = async () => { await saveConfigFromPanel(); };
+}
+
+function updateQuickPanelVisibility() {
+  const settings = loadSettings();
+  const weekBtn = document.querySelector('[data-quick="thisWeek"]');
+  const monthBtn = document.querySelector('[data-quick="thisMonth"]');
+  const ytdBtn = document.querySelector('[data-quick="ytd"]');
+  const hintEl = qs("quickHint");
+
+  if (settings.kind === "single") {
+    if (weekBtn) weekBtn.style.display = "none";
+    if (monthBtn) monthBtn.style.display = "none";
+    if (ytdBtn) ytdBtn.style.display = "none";
+    if (hintEl) hintEl.style.display = "none";
+  } else {
+    if (weekBtn) weekBtn.style.display = "";
+    if (monthBtn) monthBtn.style.display = "";
+    if (ytdBtn) ytdBtn.style.display = "";
+    if (hintEl) hintEl.style.display = "";
+  }
 }
 
 async function render() {
@@ -841,7 +1064,9 @@ async function render() {
     originalStartDate = null;
     originalEndDate = null;
     hasUserSelectionInCurrentOpen = false;
+    selectedQuickType = "";
     setValueTexts("", "");
+    updateQuickSelectionUI();
     updateActionStates();
   } else {
     setHint("");
@@ -849,6 +1074,7 @@ async function render() {
 
   initFlatpickr(settings);
   bindHandlers();
+  updateQuickPanelVisibility();
   await bindParameterChangedListeners(settings);
 
   if (settings.startParam) {
