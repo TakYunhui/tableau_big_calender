@@ -8,12 +8,12 @@ html, body {
 
 .rangeBar {
   width: 600px;
-  height: 50px;
-  display: flex;
-  align-items: center;
-  justify-content: space-between;
-  gap: 8px;
-  padding: 0 10px;
+  min-height: 76px;
+  display: grid;
+  grid-template-columns: 1fr;
+  grid-template-rows: auto auto;
+  row-gap: 8px;
+  padding: 8px 10px 6px 10px;
   background: transparent;
   position: relative;
   box-sizing: border-box;
@@ -25,13 +25,23 @@ html, body {
   align-items: center;
   gap: 8px;
   min-width: 0;
+  flex-wrap: nowrap;
   overflow: hidden;
   white-space: nowrap;
-  flex: 1 1 auto;
+  width: 100%;
+}
+
+.topActions {
+  display: flex;
+  align-items: center;
+  justify-content: flex-end;
+  gap: 6px;
+  width: 100%;
+  flex-wrap: nowrap;
 }
 
 .label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 800;
   color: rgba(0, 0, 0, 0.72);
 }
@@ -53,6 +63,11 @@ html, body {
   text-decoration: none;
   border-radius: 9px;
   padding: 5px 10px;
+  min-width: 104px;
+  max-width: 118px;
+  text-align: center;
+  overflow: hidden;
+  text-overflow: ellipsis;
   border: 1px solid rgba(0, 0, 0, 0.12);
   background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(244,247,251,0.98));
   box-shadow:
@@ -93,8 +108,8 @@ html, body {
 
 .miniBtn {
   height: 32px;
-  min-width: 76px;
-  padding: 0 12px;
+  min-width: 68px;
+  padding: 0 10px;
   border-radius: 9px;
   cursor: pointer;
   font-size: 12px;
@@ -294,7 +309,7 @@ html, body {
 }
 
 .calHost {
-  height: 186px;
+  height: 210px;
   overflow-y: auto;
   overflow-x: hidden;
   border-top: 1px solid rgba(0,0,0,0.10);
@@ -302,7 +317,6 @@ html, body {
   padding: 6px 8px 6px 8px;
   scrollbar-width: thin;
 }
-
 /* 달력 외곽 */
 .calHost .flatpickr-calendar {
   width: 584px !important;
@@ -399,7 +413,7 @@ html, body {
 
 /* 요일 헤더 */
 .calHost .flatpickr-weekdays {
-  height: 30px !important;
+  height: 34px !important;
   margin-bottom: 0;
   border-bottom: 1px solid rgba(0,0,0,0.08);
   background: #fbfcfe;
@@ -411,9 +425,9 @@ html, body {
 }
 
 .calHost .flatpickr-weekday {
-  height: 30px !important;
-  line-height: 30px !important;
-  font-size: 12px !important;
+  height: 34px !important;
+  line-height: 34px !important;
+  font-size: 13px !important;
   font-weight: 800;
   color: rgba(0,0,0,0.62) !important;
   border-right: 1px solid rgba(0,0,0,0.06);
@@ -437,11 +451,10 @@ html, body {
   grid-template-columns: repeat(7, 1fr);
 }
 
-/* 날짜 칸을 사각 셀처럼 */
 .calHost .flatpickr-day {
-  height: 32px !important;
-  line-height: 32px !important;
-  font-size: 13px !important;
+  height: 38px !important;
+  line-height: 38px !important;
+  font-size: 14px !important;
   font-weight: 700;
   width: 100% !important;
   max-width: none !important;
