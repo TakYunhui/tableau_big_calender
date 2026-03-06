@@ -350,6 +350,12 @@ function applyMonthHeaderPatch(instance) {
   }
 }
 
+function getCurrentSingleModeDate() {
+  if (calendarMode === "start") return pendingStartDate;
+  if (calendarMode === "end") return pendingEndDate;
+  return null;
+}
+
 function initFlatpickr(settings) {
   destroyFP();
   if (!ensureFlatpickrLoaded()) return;
@@ -428,6 +434,38 @@ function initFlatpickr(settings) {
       }
 
       updateActionStates();
+    },
+
+    onDayCreate: (dObj, dStr, instance, dayElem) => {
+      const dateObj = dayElem.dateObj;
+      if (!dateObj) return;
+
+      const selectedSingleDate = getCurrentSingleModeDate();
+
+      if (
+        isCalendarOpen &&
+        fpMode === "single" &&
+        selectedSingleDate &&
+        isSameDate(dateObj, selectedSingleDate)
+      ) {
+        dayElem.classList.add("same-date-close");
+        dayElem.title = "같은 날짜를 다시 누르면 닫힙니다.";
+      }
+
+      dayElem.addEventListener("mousedown", (e) => {
+        if (!isCalendarOpen) return;
+        if (fpMode !== "single") return;
+
+        const currentDate = getCurrentSingleModeDate();
+        if (!currentDate) return;
+
+        if (isSameDate(dateObj, currentDate)) {
+          e.preventDefault();
+          e.stopPropagation();
+          closeCalendarUI();
+          setHint("");
+        }
+      });
     }
   });
 
@@ -510,13 +548,13 @@ function updatePrimaryModeButton() {
   const enabled = !isApplying && (isRangeOpen || canEnableRangeMode(settings));
   btn.disabled = !enabled;
 
-  btn.classList.remove("btn-secondary-active", "btn-secondary-inactive", "btn-secondary-cancel");
+  btn.classList.remove("btn-range-active", "btn-range-inactive", "btn-range-cancel");
   if (isRangeOpen) {
-    btn.classList.add(enabled ? "btn-secondary-cancel" : "btn-secondary-inactive");
+    btn.classList.add(enabled ? "btn-range-cancel" : "btn-range-inactive");
   } else if (enabled) {
-    btn.classList.add("btn-secondary-active");
+    btn.classList.add("btn-range-active");
   } else {
-    btn.classList.add("btn-secondary-inactive");
+    btn.classList.add("btn-range-inactive");
   }
 }
 
@@ -530,13 +568,13 @@ function updateQuickModeButton() {
   const enabled = !isApplying && (isOpen || canEnableQuickMode());
   btn.disabled = !enabled;
 
-  btn.classList.remove("btn-secondary-active", "btn-secondary-inactive", "btn-secondary-cancel");
+  btn.classList.remove("btn-quick-active", "btn-quick-inactive", "btn-quick-cancel");
   if (isOpen) {
-    btn.classList.add(enabled ? "btn-secondary-cancel" : "btn-secondary-inactive");
+    btn.classList.add(enabled ? "btn-quick-cancel" : "btn-quick-inactive");
   } else if (enabled) {
-    btn.classList.add("btn-secondary-active");
+    btn.classList.add("btn-quick-active");
   } else {
-    btn.classList.add("btn-secondary-inactive");
+    btn.classList.add("btn-quick-inactive");
   }
 }
 
@@ -698,7 +736,7 @@ function getTodayRange() {
 
 function getThisWeekRange() {
   const today = startOfDay(new Date());
-  const day = today.getDay(); // 0:일 ~ 6:토
+  const day = today.getDay();
   const diffToMonday = day === 0 ? -6 : 1 - day;
 
   const start = new Date(today);
