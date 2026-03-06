@@ -27,6 +27,7 @@ let originalStartDate = null;
 let originalEndDate = null;
 
 let calendarMode = "range"; // "start" | "end" | "range"
+let hasUserSelectionInCurrentOpen = false;
 
 function qs(id) {
   return document.getElementById(id);
@@ -88,6 +89,10 @@ function toISODateOnly(d) {
   return `${y}-${m}-${day}`;
 }
 
+function cloneDate(d) {
+  return d ? new Date(d.getTime()) : null;
+}
+
 function parseDisplayToDate(text) {
   if (!text || text === "-") return null;
   const d = new Date(text);
@@ -100,22 +105,27 @@ function isSameDate(a, b) {
   return toISODateOnly(a) === toISODateOnly(b);
 }
 
-function addFlash(el) {
-  if (!el) return;
-  el.classList.remove("changed");
-  void el.offsetWidth;
-  el.classList.add("changed");
-}
-
 function updateValueHighlightState() {
   const startEl = qs("startText");
   const endEl = qs("endText");
 
+  const shouldHighlight = isCalendarOpen && hasUserSelectionInCurrentOpen;
+
   if (startEl) {
-    startEl.classList.toggle("pending", !isSameDate(pendingStartDate, originalStartDate));
+    const startChanged = !isSameDate(pendingStartDate, originalStartDate);
+    const showStart = shouldHighlight && startChanged;
+    startEl.classList.toggle("pending", showStart);
+    if (!showStart) startEl.classList.remove("changed");
   }
+
   if (endEl) {
-    endEl.classList.toggle("pending", !isSameDate(pendingEndDate, originalEndDate));
+    const settings = loadSettings();
+    const comparePendingEnd = settings.kind === "single" ? pendingStartDate : pendingEndDate;
+    const compareOriginalEnd = settings.kind === "single" ? originalStartDate : originalEndDate;
+    const endChanged = !isSameDate(comparePendingEnd, compareOriginalEnd);
+    const showEnd = shouldHighlight && endChanged && settings.kind === "range";
+    endEl.classList.toggle("pending", showEnd);
+    if (!showEnd) endEl.classList.remove("changed");
   }
 }
 
@@ -176,6 +186,7 @@ async function syncUIFromCurrentParameterValues(settings) {
     pendingEndDate = null;
     originalStartDate = null;
     originalEndDate = null;
+    hasUserSelectionInCurrentOpen = false;
     setValueTexts("", "");
     updateActionStates();
     return;
@@ -197,8 +208,10 @@ async function syncUIFromCurrentParameterValues(settings) {
   pendingStartDate = parseDisplayToDate(startDisplay);
   pendingEndDate = parseDisplayToDate(endDisplay);
 
-  originalStartDate = pendingStartDate ? new Date(pendingStartDate) : null;
-  originalEndDate = pendingEndDate ? new Date(pendingEndDate) : null;
+  originalStartDate = cloneDate(pendingStartDate);
+  originalEndDate = cloneDate(pendingEndDate);
+
+  hasUserSelectionInCurrentOpen = false;
 
   setValueTexts(startDisplay, endDisplay);
   updateActionStates();
@@ -248,15 +261,19 @@ function openConfigPanelUI() {
 
 function closeCalendarUI() {
   isCalendarOpen = false;
+  hasUserSelectionInCurrentOpen = false;
   const h = qs("calHost");
   if (h) h.classList.remove("open");
+  updateValueHighlightState();
   updateActionStates();
 }
 
 function openCalendarUI() {
   isCalendarOpen = true;
+  hasUserSelectionInCurrentOpen = false;
   const h = qs("calHost");
   if (h) h.classList.add("open");
+  updateValueHighlightState();
   updateActionStates();
 }
 
@@ -344,27 +361,32 @@ function initFlatpickr(settings) {
     onOpen: () => setHint(""),
 
     onChange: (selectedDates) => {
+      hasUserSelectionInCurrentOpen = true;
+
       if (calendarMode === "start") {
         const picked = selectedDates[0] || null;
         if (!picked) return;
         pendingStartDate = picked;
+
         setValueTexts(
           pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
           pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
         );
-        addFlash(qs("startText"));
+
       } else if (calendarMode === "end") {
         const picked = selectedDates[0] || null;
         if (!picked) return;
         pendingEndDate = picked;
+
         setValueTexts(
           pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
           pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
         );
-        addFlash(qs("endText"));
+
       } else {
         const start = selectedDates[0] || null;
         const end = selectedDates[1] || null;
+
         pendingStartDate = start;
         pendingEndDate = end || null;
 
@@ -372,9 +394,6 @@ function initFlatpickr(settings) {
           pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
           pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
         );
-
-        if (start) addFlash(qs("startText"));
-        if (end) addFlash(qs("endText"));
       }
 
       updateActionStates();
@@ -405,31 +424,25 @@ async function applyDatesToParameters(settings, start, end) {
   }
 }
 
-function hasPendingChange(settings) {
-  const endForCompare = settings.kind === "single" ? pendingStartDate : pendingEndDate;
-  const originalEndForCompare = settings.kind === "single" ? originalStartDate : originalEndDate;
+function isSinglePickingMode() {
+  return isCalendarOpen && (calendarMode === "start" || calendarMode === "end");
+}
 
-  return (
-    !isSameDate(pendingStartDate, originalStartDate) ||
-    !isSameDate(endForCompare, originalEndForCompare)
-  );
+function isDateEditingState() {
+  return isCalendarOpen;
 }
 
 function canEnableRangeMode(settings) {
   if (settings.kind !== "range") return false;
-  if (calendarMode === "range" && isCalendarOpen) return false;
-  return true;
+  return !isSinglePickingMode();
 }
 
 function canEnableApply(settings) {
+  if (!isDateEditingState()) return false;
+
   if (!pendingStartDate) return false;
   if (settings.kind === "range" && !pendingEndDate) return false;
-  if (!hasPendingChange(settings)) return false;
 
-  const finalEnd = settings.kind === "single" ? pendingStartDate : pendingEndDate;
-  if (settings.kind === "range" && pendingStartDate && finalEnd && pendingStartDate > finalEnd) {
-    return false;
-  }
   return true;
 }
 
@@ -444,7 +457,7 @@ function updateActionStates() {
   if (rangeModeBtn) {
     rangeModeBtn.disabled = !rangeEnabled;
     rangeModeBtn.classList.toggle("inactive", !rangeEnabled);
-    rangeModeBtn.classList.toggle("active", rangeEnabled && calendarMode === "range" && isCalendarOpen);
+    rangeModeBtn.classList.toggle("active", rangeEnabled && isCalendarOpen && calendarMode === "range");
   }
 
   if (applyBtn) {
@@ -472,15 +485,20 @@ function openCalendarFor(mode) {
     fp.setDate(pendingEndDate, false);
   } else if (mode === "range" && pendingStartDate && pendingEndDate) {
     fp.setDate([pendingStartDate, pendingEndDate], false);
+  } else if (mode === "range" && pendingStartDate) {
+    fp.setDate([pendingStartDate], false);
   } else {
     fp.clear();
   }
 
+  updateValueHighlightState();
   updateActionStates();
 }
 
 async function applyPendingDates() {
   const settings = loadSettings();
+
+  if (!isDateEditingState()) return;
 
   if (!pendingStartDate) {
     setHint("시작날짜를 선택하세요.");
@@ -742,6 +760,7 @@ async function render() {
     pendingEndDate = null;
     originalStartDate = null;
     originalEndDate = null;
+    hasUserSelectionInCurrentOpen = false;
     setValueTexts("", "");
     updateActionStates();
   } else {
