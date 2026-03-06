@@ -1,227 +1,459 @@
-/* ===== 기본 레이아웃 ===== */
-* {
-  box-sizing: border-box;
-}
-
-html,
-body {
+html, body {
   margin: 0;
   padding: 0;
-  width: 100%;
-  font-family: "Noto Sans KR", sans-serif;
   background: transparent;
-  color: #1f2937;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", sans-serif;
+  overflow: hidden;
 }
 
-body {
-  min-width: 600px;
-}
-
-.app {
+.rangeBar {
   width: 600px;
-  padding: 10px 12px;
-  background: #ffffff;
-}
-
-/* 상단 바 */
-.range-bar {
+  height: 46px;
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 8px;
-  flex-wrap: nowrap;
-}
-
-.range-display {
-  flex: 1;
-  min-width: 0;
-  padding: 8px 10px;
-  border: 1px solid #d1d5db;
-  border-radius: 8px;
-  background: #f8fafc;
-  font-size: 14px;
-  font-weight: 600;
-  white-space: nowrap;
+  padding: 0 10px;
+  background: transparent;
+  position: relative;
+  box-sizing: border-box;
   overflow: hidden;
-  text-overflow: ellipsis;
 }
 
-.actions {
+.rangeLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  min-width: 0;
+  overflow: hidden;
+  white-space: nowrap;
+  flex: 1 1 auto;
+}
+
+.label {
+  font-size: 15px;
+  font-weight: 800;
+  color: rgba(0, 0, 0, 0.75);
+}
+
+.value {
+  font-size: 15px;
+  font-weight: 900;
+  color: rgba(0, 0, 0, 0.95);
+  transition: color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+}
+
+.dateValue {
+  cursor: pointer;
+  text-decoration: underline;
+  text-underline-offset: 2px;
+  border-radius: 6px;
+  padding: 1px 4px;
+}
+
+.dateValue.pending {
+  color: #3170f5;
+  background: rgba(49, 112, 245, 0.10);
+  box-shadow: 0 0 0 1px rgba(49, 112, 245, 0.18) inset;
+}
+
+.sep {
+  font-size: 14px;
+  font-weight: 800;
+  color: rgba(0, 0, 0, 0.28);
+  margin: 0 1px;
+}
+
+.topActions {
   display: flex;
   align-items: center;
   gap: 6px;
   flex-shrink: 0;
 }
 
-button {
-  height: 34px;
+.miniBtn {
+  height: 32px;
+  min-width: 76px;
   padding: 0 12px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  background: #fff;
-  font-size: 13px;
-  font-weight: 600;
-  color: #334155;
+  border-radius: 9px;
   cursor: pointer;
-  white-space: nowrap;
-}
-
-button:hover {
-  background: #f8fafc;
-}
-
-button:disabled {
-  cursor: not-allowed;
-  opacity: 0.55;
-  background: #f1f5f9;
-}
-
-button.primary {
-  border-color: #2563eb;
-  background: #2563eb;
-  color: #fff;
-}
-
-button.primary:hover {
-  background: #1d4ed8;
-}
-
-/* 패널 */
-.panel {
-  margin-top: 10px;
-  padding: 12px;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
-  background: #ffffff;
-}
-
-/* 날짜 필드 */
-.date-fields {
-  display: flex;
-  gap: 8px;
-  margin-bottom: 10px;
-}
-
-.date-field {
-  flex: 1;
-}
-
-.date-field label {
-  display: block;
-  margin-bottom: 4px;
   font-size: 12px;
-  font-weight: 700;
-  color: #475569;
+  font-weight: 800;
+  line-height: 1;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease;
 }
 
-.date-field input {
-  width: 100%;
-  height: 36px;
+/* 왼쪽 버튼: 보조 액션 */
+.btn-secondary-active {
+  border: 1px solid rgba(49, 112, 245, 0.32);
+  background: rgba(49, 112, 245, 0.08);
+  color: #245fdc;
+}
+
+.btn-secondary-active:hover:not(:disabled) {
+  background: rgba(49, 112, 245, 0.14);
+  border-color: rgba(49, 112, 245, 0.42);
+}
+
+.btn-secondary-inactive,
+.btn-secondary-inactive:disabled {
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: #eef2f7;
+  color: rgba(0, 0, 0, 0.42);
+  cursor: default;
+}
+
+.btn-secondary-cancel {
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: #f5f6f8;
+  color: rgba(0, 0, 0, 0.72);
+}
+
+.btn-secondary-cancel:hover:not(:disabled) {
+  background: #eceff3;
+}
+
+/* 오른쪽 버튼: 주 액션 */
+.btn-primary-active {
+  border: 1px solid #3170f5;
+  background: #3170f5;
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(49, 112, 245, 0.25);
+}
+
+.btn-primary-active:hover:not(:disabled) {
+  background: #255fe0;
+  border-color: #255fe0;
+}
+
+.btn-primary-inactive,
+.btn-primary-inactive:disabled {
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: #eef2f7;
+  color: rgba(0, 0, 0, 0.42);
+  cursor: default;
+  box-shadow: none;
+}
+
+.settingsBtn {
+  height: 28px;
+  width: 28px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  display: none;
+  font-size: 22px;
+  line-height: 1;
+  padding: 0;
+}
+
+.fpHidden {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hint {
+  margin-top: 2px;
+  font-size: 11px;
+  color: rgba(0,0,0,0.62);
+  min-height: 14px;
   padding: 0 10px;
-  border: 1px solid #cbd5e1;
-  border-radius: 8px;
-  font-size: 14px;
-  background: #fff;
+  box-sizing: border-box;
 }
 
-/* 퀵 버튼 */
-.quick-actions {
+.quickHost,
+.calHost,
+.cfgPanel {
+  width: 600px;
+  box-sizing: border-box;
+  display: none;
+}
+
+.quickHost.open,
+.calHost.open,
+.cfgPanel.open {
+  display: block;
+}
+
+.quickHost {
+  min-height: 48px;
+  border-top: 1px solid rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.96);
+  padding: 8px 10px;
+}
+
+.quickBar {
   display: flex;
+  align-items: center;
   gap: 6px;
   flex-wrap: wrap;
-  margin-bottom: 10px;
 }
 
-/* ===== flatpickr 롤백 핵심 ===== */
-/* grid 강제, 스크롤 강제, 높이 고정 같은 커스텀 제거 */
-.flatpickr-calendar {
-  width: 100% !important;
-  max-width: 100%;
-  box-shadow: none;
-  border: 1px solid #e5e7eb;
-  border-radius: 10px;
+.quickBtn {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(49, 112, 245, 0.18);
+  background: rgba(49, 112, 245, 0.06);
+  color: #245fdc;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease;
+}
+
+.quickBtn:hover:not(:disabled) {
+  background: rgba(49, 112, 245, 0.12);
+  border-color: rgba(49, 112, 245, 0.28);
+}
+
+.quickBtn.selected {
+  background: #3170f5;
+  border-color: #3170f5;
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(49, 112, 245, 0.22);
+}
+
+.quickHint {
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.55);
+  margin-left: 4px;
+}
+
+.calHost {
+  height: 178px;
+  overflow-y: auto;
+  overflow-x: hidden;
+  border-top: 1px solid rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.96);
+  padding: 2px 8px 0 8px;
+  scrollbar-width: thin;
+}
+
+.calHost .flatpickr-calendar {
+  width: 584px !important;
+  max-width: 584px !important;
+  min-height: max-content !important;
   position: static !important;
-  top: auto !important;
-  left: auto !important;
-  margin-top: 8px;
-}
-
-.flatpickr-calendar.inline {
-  display: block;
-}
-
-.flatpickr-months {
-  margin-bottom: 4px;
-}
-
-.flatpickr-month {
-  height: 40px;
-}
-
-.flatpickr-current-month {
-  font-size: 16px;
-  padding-top: 6px;
-}
-
-.flatpickr-weekdays {
-  height: 32px;
-}
-
-.flatpickr-weekday {
-  font-size: 12px;
-  font-weight: 700;
-  color: #64748b;
-}
-
-.flatpickr-days,
-.dayContainer,
-.flatpickr-rContainer,
-.flatpickr-innerContainer {
-  width: 100% !important;
-  min-width: 100% !important;
-  max-width: 100% !important;
-}
-
-/* 여기서 grid / overflow / fixed height 절대 넣지 말 것 */
-.dayContainer {
+  margin: 0 auto !important;
+  box-shadow: none !important;
+  border: 0 !important;
+  background: transparent !important;
   display: block !important;
 }
 
-.flatpickr-day {
-  border: none !important;
-  border-radius: 6px;
-  line-height: 38px;
-  height: 38px;
-  max-width: none;
+.calHost .flatpickr-months {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 30px !important;
+  margin-bottom: 2px;
+  position: relative;
+  gap: 6px;
+  padding: 0 16px;
+  box-sizing: border-box;
 }
 
-.flatpickr-day.selected,
-.flatpickr-day.startRange,
-.flatpickr-day.endRange {
-  background: #2563eb !important;
-  border-color: #2563eb !important;
+.calHost .flatpickr-month {
+  height: 30px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 1 auto;
+}
+
+.calHost .flatpickr-current-month {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: auto !important;
+  height: 30px !important;
+  padding: 0 !important;
+  left: auto !important;
+  font-size: 16px !important;
+  line-height: 1 !important;
+  position: static !important;
+  flex: 0 1 auto;
+}
+
+.calHost .flatpickr-current-month .numInputWrapper {
+  order: 1;
+  width: 72px !important;
+}
+
+.calHost .flatpickr-current-month .flatpickr-monthDropdown-months {
+  order: 2;
+}
+
+.calHost .flatpickr-current-month .flatpickr-monthDropdown-months,
+.calHost .flatpickr-current-month input.cur-year {
+  font-size: 16px !important;
+  font-weight: 800;
+}
+
+.calHost .flatpickr-prev-month,
+.calHost .flatpickr-next-month {
+  position: static !important;
+  padding: 0 4px !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  height: 30px !important;
+  width: 24px !important;
+  min-width: 24px !important;
+  color: rgba(0,0,0,0.78) !important;
+  flex: 0 0 24px;
+}
+
+.calHost .flatpickr-prev-month:hover,
+.calHost .flatpickr-next-month:hover {
+  color: #3170f5 !important;
+}
+
+.calHost .flatpickr-prev-month svg,
+.calHost .flatpickr-next-month svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+.calHost .flatpickr-weekdays {
+  height: 24px !important;
+  margin-bottom: 2px;
+}
+
+.calHost .flatpickr-weekday {
+  height: 24px !important;
+  line-height: 24px !important;
+  font-size: 13px !important;
+  font-weight: 800;
+}
+
+.calHost .flatpickr-days {
+  width: 100% !important;
+}
+
+.calHost .dayContainer {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+}
+
+.calHost .flatpickr-day {
+  height: 24px !important;
+  line-height: 24px !important;
+  font-size: 13px !important;
+  font-weight: 700;
+  max-width: calc(100% / 7) !important;
+  margin: 0 !important;
+}
+
+.calHost .flatpickr-day.startRange,
+.calHost .flatpickr-day.endRange,
+.calHost .flatpickr-day.selected {
+  border-radius: 4px !important;
+  background: #3170f5 !important;
+  border-color: #3170f5 !important;
   color: #fff !important;
 }
 
-.flatpickr-day.inRange {
-  background: #dbeafe !important;
-  border-color: #dbeafe !important;
+.calHost .flatpickr-day.inRange {
+  background: rgba(49, 112, 245, 0.12) !important;
+  border-color: transparent !important;
   box-shadow: none !important;
 }
 
-.flatpickr-day.today {
-  border: 1px solid #93c5fd !important;
+.cfgPanel {
+  height: 178px;
+  background: rgba(255,255,255,0.96);
+  border-top: 1px solid rgba(0,0,0,0.10);
+  padding: 8px 10px;
+  overflow: auto;
 }
 
-.flatpickr-day.flatpickr-disabled,
-.flatpickr-day.prevMonthDay,
-.flatpickr-day.nextMonthDay {
-  opacity: 0.35;
+.cfgHeader { margin-bottom: 6px; }
+.cfgTitle { font-size: 13px; font-weight: 900; }
+.cfgSub { margin-top: 2px; font-size: 11px; color: rgba(0,0,0,.6); }
+
+.cfgRow { margin-top: 6px; }
+.cfgLabel { display: block; font-size: 11px; color: rgba(0,0,0,.65); margin-bottom: 4px; }
+
+.cfgSelect, .cfgInput {
+  width: 100%;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,.18);
+  padding: 0 10px;
+  font-size: 12px;
+  outline: none;
+  background: #fff;
 }
 
-/* 하단 버튼 영역 */
-.panel-footer {
+.cfgHint { min-height: 14px; margin-top: 6px; font-size: 11px; color: rgba(0,0,0,.6); }
+
+.cfgFooter {
   display: flex;
   justify-content: flex-end;
-  gap: 6px;
-  margin-top: 10px;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,.18);
+  background: rgba(0,0,0,.06);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.btn.primary {
+  background: rgba(0,0,0,.88);
+  color: #fff;
+  border-color: rgba(0,0,0,.88);
+}
+
+.btn.ghost {
+  background: rgba(0,0,0,.04);
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  background: rgba(30, 30, 30, 0.92);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 20;
+  white-space: nowrap;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
