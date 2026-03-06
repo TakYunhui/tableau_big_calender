@@ -6,7 +6,7 @@
   <title>조회기간</title>
 
   <link rel="stylesheet" href="./lib/flatpickr.min.css" />
-  <link rel="stylesheet" href="./styles.css?v=20260306_04" />
+  <link rel="stylesheet" href="./styles.css?v=20260306_05" />
 </head>
 
 <body>
@@ -23,8 +23,19 @@
 
     <div class="topActions">
       <button id="rangeModeBtn" class="miniBtn" type="button">기간변경</button>
+      <button id="quickModeBtn" class="miniBtn" type="button">퀵선택</button>
       <button id="applyBtn" class="miniBtn" type="button">적용</button>
       <button id="settingsBtn" class="settingsBtn" type="button" aria-label="설정">⚙</button>
+    </div>
+  </div>
+
+  <div id="quickHost" class="quickHost">
+    <div class="quickBar">
+      <button class="quickBtn" type="button" data-quick="today">당일</button>
+      <button class="quickBtn" type="button" data-quick="thisWeek">이번 주</button>
+      <button class="quickBtn" type="button" data-quick="thisMonth">당월</button>
+      <button class="quickBtn" type="button" data-quick="ytd">YTD</button>
+      <span id="quickHint" class="quickHint">YTD = 연초부터 오늘까지</span>
     </div>
   </div>
 
@@ -75,6 +86,6 @@
 
   <script src="./lib/flatpickr.min.js"></script>
   <script src="https://extensions.tableauusercontent.com/resources/tableau.extensions.1.latest.min.js"></script>
-  <script src="./main.js?v=20260306_04"></script>
+  <script src="./main.js?v=20260306_05"></script>
 </body>
 </html>
