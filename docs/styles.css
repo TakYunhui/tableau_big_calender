@@ -97,28 +97,85 @@ html, body {
   overflow: hidden;
   border-top: 1px solid rgba(0,0,0,0.12);
   background: rgba(255,255,255,0.95);
-  padding: 0;
+  padding: 2px 4px 0 4px;
 }
 
-/* inline 달력이 calHost 안에서만 보이게 */
+/* inline 달력을 calHost 안에서만 보이게 + 최대한 압축 */
 .calHost .flatpickr-calendar {
-  width: 480px !important;
-  max-width: 480px !important;
+  width: 472px !important;          /* 480 안에서 패딩 감안 */
+  max-width: 472px !important;
   position: static !important;
   margin: 0 !important;
   box-shadow: none !important;
   border: 0 !important;
+  background: transparent !important;
 }
 
-/* 140 안에 들어가게 살짝 컴팩트 */
-.calHost .flatpickr-months,
+/* 월 이동 영역 높이 줄이기 */
+.calHost .flatpickr-months {
+  height: 22px !important;
+  margin-bottom: 2px;
+}
+
+.calHost .flatpickr-month {
+  height: 22px !important;
+}
+
+.calHost .flatpickr-current-month {
+  font-size: 12px !important;
+  padding-top: 1px !important;
+  line-height: 20px !important;
+}
+
+.calHost .flatpickr-prev-month,
+.calHost .flatpickr-next-month {
+  padding: 2px 6px !important;
+  top: 0 !important;
+}
+
+.calHost .flatpickr-prev-month svg,
+.calHost .flatpickr-next-month svg {
+  width: 10px !important;
+  height: 10px !important;
+}
+
+/* 요일 줄 압축 */
 .calHost .flatpickr-weekdays {
-  padding: 2px 6px;
+  height: 16px !important;
+  margin-bottom: 1px;
 }
 
+.calHost .flatpickr-weekday {
+  height: 16px !important;
+  line-height: 16px !important;
+  font-size: 10px !important;
+}
+
+/* 날짜 영역 전체 폭 맞추기 */
+.calHost .flatpickr-days {
+  width: 100% !important;
+}
+
+.calHost .dayContainer {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+}
+
+/* 날짜 셀 압축 */
 .calHost .flatpickr-day {
-  height: 26px;
-  line-height: 26px;
+  height: 16px !important;
+  line-height: 16px !important;
+  font-size: 10px !important;
+  max-width: calc(100% / 7) !important;
+  margin: 0 !important;
+}
+
+/* 선택 범위 색 보이게 */
+.calHost .flatpickr-day.startRange,
+.calHost .flatpickr-day.endRange,
+.calHost .flatpickr-day.selected {
+  border-radius: 4px !important;
 }
 
 /* ===== 설정 패널 ===== */
