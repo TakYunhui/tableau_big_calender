@@ -9,7 +9,7 @@ const SETTINGS_KEYS = {
 
 const DEFAULTS = {
   kind: "range",
-  format: "Y-mm-dd",
+  format: "Y-m-d",
 };
 
 const FRAME_WIDTH = 600;
@@ -326,30 +326,6 @@ function getKoLocale() {
   };
 }
 
-function applyMonthHeaderPatch(instance) {
-  const calendar = instance?.calendarContainer;
-  if (!calendar) return;
-
-  const monthsWrap = calendar.querySelector(".flatpickr-months");
-  const currentMonth = calendar.querySelector(".flatpickr-current-month");
-  const prevBtn = calendar.querySelector(".flatpickr-prev-month");
-  const nextBtn = calendar.querySelector(".flatpickr-next-month");
-  const yearWrap = currentMonth?.querySelector(".numInputWrapper");
-  const monthSelect = currentMonth?.querySelector(".flatpickr-monthDropdown-months");
-
-  if (currentMonth && yearWrap && monthSelect) {
-    currentMonth.appendChild(yearWrap);
-    currentMonth.appendChild(monthSelect);
-  }
-
-  if (monthsWrap && prevBtn && nextBtn && currentMonth) {
-    monthsWrap.innerHTML = "";
-    monthsWrap.appendChild(prevBtn);
-    monthsWrap.appendChild(currentMonth);
-    monthsWrap.appendChild(nextBtn);
-  }
-}
-
 function getCurrentSingleModeDate() {
   if (calendarMode === "start") return pendingStartDate;
   if (calendarMode === "end") return pendingEndDate;
@@ -382,18 +358,6 @@ function initFlatpickr(settings) {
     monthSelectorType: "static",
     prevArrow: "<",
     nextArrow: ">",
-
-    onReady: (selectedDates, dateStr, instance) => {
-      applyMonthHeaderPatch(instance);
-    },
-
-    onMonthChange: (selectedDates, dateStr, instance) => {
-      applyMonthHeaderPatch(instance);
-    },
-
-    onYearChange: (selectedDates, dateStr, instance) => {
-      applyMonthHeaderPatch(instance);
-    },
 
     onOpen: () => setHint(""),
 
