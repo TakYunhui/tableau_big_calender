@@ -3,17 +3,16 @@ html, body {
   padding: 0;
   background: transparent;
   font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", sans-serif;
-  overflow: hidden; /* 확장 전체 스크롤 제거 */
+  overflow: hidden;
 }
 
-/* ===== 전체 폭 600 ===== */
 .rangeBar {
   width: 600px;
   height: 46px;
   display: flex;
   align-items: center;
   justify-content: space-between;
-  gap: 10px;
+  gap: 8px;
   padding: 0 10px;
   background: transparent;
   position: relative;
@@ -24,7 +23,7 @@ html, body {
 .rangeLine {
   display: flex;
   align-items: center;
-  gap: 6px; /* 날짜/버튼 사이 간격 축소 */
+  gap: 6px;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
@@ -58,12 +57,6 @@ html, body {
   box-shadow: 0 0 0 1px rgba(49, 112, 245, 0.18) inset;
 }
 
-.dateValue.changed {
-  color: #3170f5;
-  background: rgba(49, 112, 245, 0.10);
-  box-shadow: 0 0 0 1px rgba(49, 112, 245, 0.18) inset;
-}
-
 .sep {
   font-size: 14px;
   font-weight: 800;
@@ -79,59 +72,72 @@ html, body {
 }
 
 .miniBtn {
-  height: 30px;
-  min-width: 74px; /* 버튼 가로 영역 증가 */
-  padding: 0 12px;
-  border-radius: 9px;
-  border: 1px solid rgba(0,0,0,0.14);
-  background: #eef2f7;
-  color: rgba(0,0,0,0.58);
-  cursor: pointer;
-  font-size: 12px;
-  font-weight: 800;
-  line-height: 1;
-  transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease, opacity 0.16s ease;
-}
-
-.miniBtn {
-  height: 30px;
-  min-width: 82px;
+  height: 32px;
+  min-width: 88px;
   padding: 0 14px;
   border-radius: 9px;
-  border: 1px solid rgba(0,0,0,0.14);
-  background: #eef2f7;
-  color: rgba(0,0,0,0.58);
   cursor: pointer;
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
-  transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease, opacity 0.16s ease;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease;
 }
 
-.miniBtn:hover:not(:disabled) {
-  background: #e6ebf3;
+/* 왼쪽 버튼: 보조 액션 */
+.btn-secondary-active {
+  border: 1px solid rgba(49, 112, 245, 0.32);
+  background: rgba(49, 112, 245, 0.08);
+  color: #245fdc;
 }
 
-.miniBtn.inactive,
-.miniBtn:disabled {
+.btn-secondary-active:hover:not(:disabled) {
+  background: rgba(49, 112, 245, 0.14);
+  border-color: rgba(49, 112, 245, 0.42);
+}
+
+.btn-secondary-inactive,
+.btn-secondary-inactive:disabled {
+  border: 1px solid rgba(0, 0, 0, 0.10);
   background: #eef2f7;
-  color: rgba(0,0,0,0.45);
-  border-color: rgba(0,0,0,0.10);
+  color: rgba(0, 0, 0, 0.42);
   cursor: default;
-  opacity: 1;
 }
 
-.miniBtn.active,
-.miniBtn.ready {
+.btn-secondary-cancel {
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: #f5f6f8;
+  color: rgba(0, 0, 0, 0.72);
+}
+
+.btn-secondary-cancel:hover:not(:disabled) {
+  background: #eceff3;
+}
+
+/* 오른쪽 버튼: 주 액션 */
+.btn-primary-active {
+  border: 1px solid #3170f5;
   background: #3170f5;
   color: #fff;
-  border-color: #3170f5;
+  box-shadow: 0 1px 2px rgba(49, 112, 245, 0.25);
 }
 
-.miniBtn.active:hover:not(:disabled),
-.miniBtn.ready:hover:not(:disabled) {
+.btn-primary-active:hover:not(:disabled) {
   background: #255fe0;
   border-color: #255fe0;
+}
+
+.btn-primary-inactive,
+.btn-primary-inactive:disabled {
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: #eef2f7;
+  color: rgba(0, 0, 0, 0.42);
+  cursor: default;
+  box-shadow: none;
 }
 
 .settingsBtn {
@@ -165,7 +171,6 @@ html, body {
   box-sizing: border-box;
 }
 
-/* ===== 하단 영역 ===== */
 .calHost,
 .cfgPanel {
   width: 600px;
@@ -179,9 +184,8 @@ html, body {
   display: block;
 }
 
-/* ===== 달력 ===== */
 .calHost {
-  overflow-y: auto;     /* 달력만 스크롤 */
+  overflow-y: auto;
   overflow-x: hidden;
   border-top: 1px solid rgba(0,0,0,0.10);
   background: rgba(255,255,255,0.96);
@@ -208,8 +212,8 @@ html, body {
   height: 30px !important;
   margin-bottom: 2px;
   position: relative;
-  gap: 6px; /* 화살표를 더 안쪽으로 */
-  padding: 0 16px; /* 양끝 너무 붙지 않게 */
+  gap: 6px;
+  padding: 0 16px;
   box-sizing: border-box;
 }
 
@@ -254,7 +258,7 @@ html, body {
 .calHost .flatpickr-prev-month,
 .calHost .flatpickr-next-month {
   position: static !important;
-  padding: 0 4px !important; /* 더 안쪽 */
+  padding: 0 4px !important;
   margin: 0 !important;
   display: flex !important;
   align-items: center;
@@ -324,7 +328,6 @@ html, body {
   box-shadow: none !important;
 }
 
-/* ===== 설정 패널 ===== */
 .cfgPanel {
   background: rgba(255,255,255,0.96);
   border-top: 1px solid rgba(0,0,0,0.10);
