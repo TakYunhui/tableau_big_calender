@@ -20,6 +20,7 @@ let unregisterParamHandlers = [];
 
 let isConfigOpen = false;
 let isCalendarOpen = false;
+let isApplying = false;
 
 let pendingStartDate = null;
 let pendingEndDate = null;
@@ -28,6 +29,7 @@ let originalEndDate = null;
 
 let calendarMode = "range"; // "start" | "end" | "range"
 let hasUserSelectionInCurrentOpen = false;
+let toastTimer = null;
 
 function qs(id) {
   return document.getElementById(id);
@@ -41,6 +43,19 @@ function setHint(msg) {
 function setCfgHint(msg) {
   const el = qs("cfgHint");
   if (el) el.textContent = msg || "";
+}
+
+function showToast(msg) {
+  const el = qs("toast");
+  if (!el) return;
+
+  el.textContent = msg || "";
+  el.classList.add("show");
+
+  if (toastTimer) clearTimeout(toastTimer);
+  toastTimer = setTimeout(() => {
+    el.classList.remove("show");
+  }, 2200);
 }
 
 function isAuthoringMode() {
@@ -436,6 +451,7 @@ function canEnableRangeMode(settings) {
 }
 
 function canEnableApply(settings) {
+  if (isApplying) return false;
   if (!isDateEditingState()) return false;
   if (!pendingStartDate) return false;
   if (settings.kind === "range" && !pendingEndDate) return false;
@@ -450,12 +466,12 @@ function updatePrimaryModeButton() {
   const isRangeOpen = isRangePickingMode();
   btn.textContent = isRangeOpen ? "취소" : "기간변경";
 
-  const enabled = isRangeOpen || canEnableRangeMode(settings);
+  const enabled = !isApplying && (isRangeOpen || canEnableRangeMode(settings));
   btn.disabled = !enabled;
 
   btn.classList.remove("btn-secondary-active", "btn-secondary-inactive", "btn-secondary-cancel");
   if (isRangeOpen) {
-    btn.classList.add("btn-secondary-cancel");
+    btn.classList.add(enabled ? "btn-secondary-cancel" : "btn-secondary-inactive");
   } else if (enabled) {
     btn.classList.add("btn-secondary-active");
   } else {
@@ -470,9 +486,16 @@ function updateApplyButton() {
 
   const enabled = canEnableApply(settings);
   btn.disabled = !enabled;
+  btn.textContent = isApplying ? "적용 중..." : "적용";
 
-  btn.classList.remove("btn-primary-active", "btn-primary-inactive");
-  btn.classList.add(enabled ? "btn-primary-active" : "btn-primary-inactive");
+  btn.classList.remove("btn-primary-active", "btn-primary-inactive", "loading");
+  if (isApplying) {
+    btn.classList.add("btn-primary-active", "loading");
+  } else if (enabled) {
+    btn.classList.add("btn-primary-active");
+  } else {
+    btn.classList.add("btn-primary-inactive");
+  }
 }
 
 function updateActionStates() {
@@ -491,7 +514,7 @@ function restorePendingToOriginal(settings) {
 }
 
 function openCalendarFor(mode) {
-  if (isConfigOpen) return;
+  if (isConfigOpen || isApplying) return;
 
   calendarMode = mode;
   const settings = loadSettings();
@@ -525,21 +548,13 @@ function cancelRangeSelection() {
   setHint("");
 }
 
-async function applyPendingDates() {
-  const settings = loadSettings();
-
-  if (!isDateEditingState()) return;
-
-  if (!pendingStartDate) {
-    setHint("시작날짜를 선택하세요.");
-    return;
-  }
+function getDateRangeError(settings) {
+  if (!pendingStartDate) return "시작날짜를 선택하세요.";
 
   const finalEnd = settings.kind === "single" ? pendingStartDate : pendingEndDate;
 
   if (settings.kind === "range" && !finalEnd) {
-    setHint("종료날짜를 선택하세요.");
-    return;
+    return "종료날짜를 선택하세요.";
   }
 
   if (
@@ -548,18 +563,45 @@ async function applyPendingDates() {
     finalEnd &&
     pendingStartDate > finalEnd
   ) {
-    setHint("시작날짜는 종료날짜보다 클 수 없습니다.");
+    return "시작날짜는 종료날짜보다 늦을 수 없습니다.";
+  }
+
+  return "";
+}
+
+async function applyPendingDates() {
+  const settings = loadSettings();
+
+  if (!isDateEditingState() || isApplying) return;
+
+  const err = getDateRangeError(settings);
+  if (err) {
+    setHint(err);
+    showToast(err);
+    updateActionStates();
     return;
   }
 
+  const finalEnd = settings.kind === "single" ? pendingStartDate : pendingEndDate;
+
   try {
+    isApplying = true;
+    setHint("조회기간 적용 중입니다...");
+    updateActionStates();
+
     await applyDatesToParameters(settings, pendingStartDate, finalEnd);
-    setHint("");
+
     closeCalendarUI();
     await syncUIWithRetry(settings, 4, 150);
-    updateActionStates();
+
+    setHint("");
   } catch (e) {
-    setHint(e?.message || String(e));
+    const msg = e?.message || String(e);
+    setHint(msg);
+    showToast(msg);
+  } finally {
+    isApplying = false;
+    updateActionStates();
   }
 }
 
@@ -668,7 +710,7 @@ async function saveConfigFromPanel() {
 }
 
 async function toggleConfigPanel() {
-  if (!isAuthoringMode()) return;
+  if (!isAuthoringMode() || isApplying) return;
 
   if (isConfigOpen) {
     closeConfigPanelUI();
@@ -739,6 +781,8 @@ function bindHandlers() {
     rangeModeBtn.onclick = (e) => {
       e.stopPropagation();
 
+      if (isApplying) return;
+
       if (isRangePickingMode()) {
         cancelRangeSelection();
         return;
@@ -754,7 +798,7 @@ function bindHandlers() {
     applyBtn.onclick = async (e) => {
       e.stopPropagation();
       const settings = loadSettings();
-      if (!canEnableApply(settings)) return;
+      if (!canEnableApply(settings) && !isApplying) return;
       await applyPendingDates();
     };
   }
