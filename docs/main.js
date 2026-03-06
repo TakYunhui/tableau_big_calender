@@ -13,7 +13,7 @@ const DEFAULTS = {
 };
 
 const FRAME_WIDTH = 600;
-const FRAME_HEIGHT = 200;
+const FRAME_HEIGHT = 240;
 
 let fp = null;
 let unregisterParamHandlers = [];
@@ -23,6 +23,9 @@ let isCalendarOpen = false;
 
 let pendingStartDate = null;
 let pendingEndDate = null;
+let originalStartDate = null;
+let originalEndDate = null;
+
 let calendarMode = "range"; // "start" | "end" | "range"
 
 function qs(id) {
@@ -91,11 +94,39 @@ function parseDisplayToDate(text) {
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
+function isSameDate(a, b) {
+  if (!a && !b) return true;
+  if (!a || !b) return false;
+  return toISODateOnly(a) === toISODateOnly(b);
+}
+
+function addFlash(el) {
+  if (!el) return;
+  el.classList.remove("changed");
+  void el.offsetWidth;
+  el.classList.add("changed");
+}
+
+function updateValueHighlightState() {
+  const startEl = qs("startText");
+  const endEl = qs("endText");
+
+  if (startEl) {
+    startEl.classList.toggle("pending", !isSameDate(pendingStartDate, originalStartDate));
+  }
+  if (endEl) {
+    endEl.classList.toggle("pending", !isSameDate(pendingEndDate, originalEndDate));
+  }
+}
+
 function setValueTexts(startDisplay, endDisplay) {
   const startEl = qs("startText");
   const endEl = qs("endText");
+
   if (startEl) startEl.textContent = startDisplay || "-";
   if (endEl) endEl.textContent = endDisplay || "-";
+
+  updateValueHighlightState();
 }
 
 function numberToDateDisplay(n) {
@@ -143,7 +174,10 @@ async function syncUIFromCurrentParameterValues(settings) {
   if (!settings.startParam) {
     pendingStartDate = null;
     pendingEndDate = null;
+    originalStartDate = null;
+    originalEndDate = null;
     setValueTexts("", "");
+    updateActionStates();
     return;
   }
 
@@ -163,7 +197,11 @@ async function syncUIFromCurrentParameterValues(settings) {
   pendingStartDate = parseDisplayToDate(startDisplay);
   pendingEndDate = parseDisplayToDate(endDisplay);
 
+  originalStartDate = pendingStartDate ? new Date(pendingStartDate) : null;
+  originalEndDate = pendingEndDate ? new Date(pendingEndDate) : null;
+
   setValueTexts(startDisplay, endDisplay);
+  updateActionStates();
 }
 
 async function syncUIWithRetry(settings, tries = 8, delayMs = 250) {
@@ -212,12 +250,14 @@ function closeCalendarUI() {
   isCalendarOpen = false;
   const h = qs("calHost");
   if (h) h.classList.remove("open");
+  updateActionStates();
 }
 
 function openCalendarUI() {
   isCalendarOpen = true;
   const h = qs("calHost");
   if (h) h.classList.add("open");
+  updateActionStates();
 }
 
 function getKoLocale() {
@@ -236,6 +276,30 @@ function getKoLocale() {
     toggleTitle: "클릭하여 전환",
     time_24hr: true
   };
+}
+
+function applyMonthHeaderPatch(instance) {
+  const calendar = instance?.calendarContainer;
+  if (!calendar) return;
+
+  const monthsWrap = calendar.querySelector(".flatpickr-months");
+  const currentMonth = calendar.querySelector(".flatpickr-current-month");
+  const prevBtn = calendar.querySelector(".flatpickr-prev-month");
+  const nextBtn = calendar.querySelector(".flatpickr-next-month");
+  const yearWrap = currentMonth?.querySelector(".numInputWrapper");
+  const monthSelect = currentMonth?.querySelector(".flatpickr-monthDropdown-months");
+
+  if (currentMonth && yearWrap && monthSelect) {
+    currentMonth.appendChild(yearWrap);
+    currentMonth.appendChild(monthSelect);
+  }
+
+  if (monthsWrap && prevBtn && nextBtn && currentMonth) {
+    monthsWrap.innerHTML = "";
+    monthsWrap.appendChild(prevBtn);
+    monthsWrap.appendChild(currentMonth);
+    monthsWrap.appendChild(nextBtn);
+  }
 }
 
 function initFlatpickr(settings) {
@@ -266,14 +330,15 @@ function initFlatpickr(settings) {
     nextArrow: ">",
 
     onReady: (selectedDates, dateStr, instance) => {
-      const currentMonth = instance.calendarContainer.querySelector(".flatpickr-current-month");
-      const yearWrap = currentMonth?.querySelector(".numInputWrapper");
-      const monthSelect = currentMonth?.querySelector(".flatpickr-monthDropdown-months");
+      applyMonthHeaderPatch(instance);
+    },
 
-      if (currentMonth && yearWrap && monthSelect) {
-        currentMonth.appendChild(yearWrap);
-        currentMonth.appendChild(monthSelect);
-      }
+    onMonthChange: (selectedDates, dateStr, instance) => {
+      applyMonthHeaderPatch(instance);
+    },
+
+    onYearChange: (selectedDates, dateStr, instance) => {
+      applyMonthHeaderPatch(instance);
     },
 
     onOpen: () => setHint(""),
@@ -283,21 +348,36 @@ function initFlatpickr(settings) {
         const picked = selectedDates[0] || null;
         if (!picked) return;
         pendingStartDate = picked;
+        setValueTexts(
+          pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
+          pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
+        );
+        addFlash(qs("startText"));
       } else if (calendarMode === "end") {
         const picked = selectedDates[0] || null;
         if (!picked) return;
         pendingEndDate = picked;
+        setValueTexts(
+          pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
+          pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
+        );
+        addFlash(qs("endText"));
       } else {
         const start = selectedDates[0] || null;
         const end = selectedDates[1] || null;
         pendingStartDate = start;
         pendingEndDate = end || null;
+
+        setValueTexts(
+          pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
+          pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
+        );
+
+        if (start) addFlash(qs("startText"));
+        if (end) addFlash(qs("endText"));
       }
 
-      setValueTexts(
-        pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
-        pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
-      );
+      updateActionStates();
     }
   });
 
@@ -325,6 +405,55 @@ async function applyDatesToParameters(settings, start, end) {
   }
 }
 
+function hasPendingChange(settings) {
+  const endForCompare = settings.kind === "single" ? pendingStartDate : pendingEndDate;
+  const originalEndForCompare = settings.kind === "single" ? originalStartDate : originalEndDate;
+
+  return (
+    !isSameDate(pendingStartDate, originalStartDate) ||
+    !isSameDate(endForCompare, originalEndForCompare)
+  );
+}
+
+function canEnableRangeMode(settings) {
+  if (settings.kind !== "range") return false;
+  if (calendarMode === "range" && isCalendarOpen) return false;
+  return true;
+}
+
+function canEnableApply(settings) {
+  if (!pendingStartDate) return false;
+  if (settings.kind === "range" && !pendingEndDate) return false;
+  if (!hasPendingChange(settings)) return false;
+
+  const finalEnd = settings.kind === "single" ? pendingStartDate : pendingEndDate;
+  if (settings.kind === "range" && pendingStartDate && finalEnd && pendingStartDate > finalEnd) {
+    return false;
+  }
+  return true;
+}
+
+function updateActionStates() {
+  const settings = loadSettings();
+  const rangeModeBtn = qs("rangeModeBtn");
+  const applyBtn = qs("applyBtn");
+
+  const rangeEnabled = canEnableRangeMode(settings);
+  const applyEnabled = canEnableApply(settings);
+
+  if (rangeModeBtn) {
+    rangeModeBtn.disabled = !rangeEnabled;
+    rangeModeBtn.classList.toggle("inactive", !rangeEnabled);
+    rangeModeBtn.classList.toggle("active", rangeEnabled && calendarMode === "range" && isCalendarOpen);
+  }
+
+  if (applyBtn) {
+    applyBtn.disabled = !applyEnabled;
+    applyBtn.classList.toggle("ready", applyEnabled);
+    applyBtn.classList.toggle("inactive", !applyEnabled);
+  }
+}
+
 function openCalendarFor(mode) {
   if (isConfigOpen) return;
 
@@ -346,6 +475,8 @@ function openCalendarFor(mode) {
   } else {
     fp.clear();
   }
+
+  updateActionStates();
 }
 
 async function applyPendingDates() {
@@ -378,6 +509,7 @@ async function applyPendingDates() {
     setHint("");
     closeCalendarUI();
     await syncUIWithRetry(settings, 4, 150);
+    updateActionStates();
   } catch (e) {
     setHint(e?.message || String(e));
   }
@@ -558,6 +690,8 @@ function bindHandlers() {
   if (rangeModeBtn) {
     rangeModeBtn.onclick = (e) => {
       e.stopPropagation();
+      const settings = loadSettings();
+      if (!canEnableRangeMode(settings)) return;
       openCalendarFor("range");
     };
   }
@@ -565,6 +699,8 @@ function bindHandlers() {
   if (applyBtn) {
     applyBtn.onclick = async (e) => {
       e.stopPropagation();
+      const settings = loadSettings();
+      if (!canEnableApply(settings)) return;
       await applyPendingDates();
     };
   }
@@ -602,7 +738,12 @@ async function render() {
 
   if (!settings.startParam || (settings.kind === "range" && !settings.endParam)) {
     setHint(isAuthoringMode() ? "⚙ 설정에서 파라미터를 매핑하세요." : "조회기간 설정이 아직 완료되지 않았습니다.");
+    pendingStartDate = null;
+    pendingEndDate = null;
+    originalStartDate = null;
+    originalEndDate = null;
     setValueTexts("", "");
+    updateActionStates();
   } else {
     setHint("");
   }
@@ -613,6 +754,8 @@ async function render() {
 
   if (settings.startParam) {
     await syncUIWithRetry(settings);
+  } else {
+    updateActionStates();
   }
 }
 
