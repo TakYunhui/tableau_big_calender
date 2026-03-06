@@ -54,6 +54,8 @@ html, body {
 
 .dateValue.pending {
   color: #3170f5;
+  background: rgba(49, 112, 245, 0.10);
+  box-shadow: 0 0 0 1px rgba(49, 112, 245, 0.18) inset;
 }
 
 .dateValue.changed {
@@ -91,6 +93,21 @@ html, body {
   transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease, opacity 0.16s ease;
 }
 
+.miniBtn {
+  height: 30px;
+  min-width: 82px;
+  padding: 0 14px;
+  border-radius: 9px;
+  border: 1px solid rgba(0,0,0,0.14);
+  background: #eef2f7;
+  color: rgba(0,0,0,0.58);
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  transition: background-color 0.16s ease, color 0.16s ease, border-color 0.16s ease, opacity 0.16s ease;
+}
+
 .miniBtn:hover:not(:disabled) {
   background: #e6ebf3;
 }
@@ -105,16 +122,14 @@ html, body {
 }
 
 .miniBtn.active,
-.miniBtn.ready,
-.miniBtn.primary {
+.miniBtn.ready {
   background: #3170f5;
   color: #fff;
   border-color: #3170f5;
 }
 
 .miniBtn.active:hover:not(:disabled),
-.miniBtn.ready:hover:not(:disabled),
-.miniBtn.primary:hover:not(:disabled) {
+.miniBtn.ready:hover:not(:disabled) {
   background: #255fe0;
   border-color: #255fe0;
 }
