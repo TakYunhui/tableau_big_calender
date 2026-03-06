@@ -200,6 +200,25 @@ function openCalendarUI() {
   if (h) h.classList.add("open");
 }
 
+
+function getKoLocale() {
+  return {
+    weekdays: {
+      shorthand: ["일", "월", "화", "수", "목", "금", "토"],
+      longhand: ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"]
+    },
+    months: {
+      shorthand: ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"],
+      longhand: ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"]
+    },
+    firstDayOfWeek: 0,
+    rangeSeparator: " ~ ",
+    scrollTitle: "스크롤하여 증가",
+    toggleTitle: "클릭하여 전환",
+    time_24hr: true
+  };
+}
+
 /** ✅ 200 고정이므로 달력은 calHost(하단 140) 안에 inline으로 박는다 */
 function initFlatpickr(settings) {
   destroyFP();
@@ -217,14 +236,38 @@ function initFlatpickr(settings) {
 
   const mode = settings.kind === "single" ? "single" : "range";
 
+  // 한글 locale 직접 정의
+  const koLocale = {
+    weekdays: {
+      shorthand: ["일", "월", "화", "수", "목", "금", "토"],
+      longhand: ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"]
+    },
+    months: {
+      shorthand: ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"],
+      longhand: ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"]
+    },
+    firstDayOfWeek: 0,
+    rangeSeparator: " ~ ",
+    scrollTitle: "스크롤하여 증가",
+    toggleTitle: "클릭하여 전환",
+    time_24hr: true
+  };
+
   fp = flatpickr(input, {
-    mode,
+    mode: mode,
     dateFormat: settings.format || DEFAULTS.format,
+
     allowInput: false,
     clickOpens: false,
 
     inline: true,
     appendTo: host,
+
+    locale: koLocale,
+
+    monthSelectorType: "static",
+    prevArrow: "<",
+    nextArrow: ">",
 
     onOpen: () => setHint(""),
 
@@ -232,7 +275,11 @@ function initFlatpickr(settings) {
       const start = selectedDates[0] || null;
       const end = settings.kind === "single" ? start : (selectedDates[1] || null);
 
-      setValueTexts(start ? toISODateOnly(start) : "-", end ? toISODateOnly(end) : "-");
+      setValueTexts(
+        start ? toISODateOnly(start) : "-",
+        end ? toISODateOnly(end) : "-"
+      );
+
       if (settings.kind === "range" && !end) return;
 
       try {
@@ -242,7 +289,7 @@ function initFlatpickr(settings) {
       } catch (e) {
         setHint(e?.message || String(e));
       }
-    },
+    }
   });
 
   // 기본: 닫힘
