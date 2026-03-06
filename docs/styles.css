@@ -5,9 +5,9 @@ html, body {
   font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", sans-serif;
 }
 
-/* ===== 상단 바 ===== */
+/* ===== 전체 폭 600 ===== */
 .rangeBar {
-  width: 480px;
+  width: 600px;
   height: 45px;
   display: flex;
   align-items: center;
@@ -88,7 +88,6 @@ html, body {
   padding: 0;
 }
 
-/* 숨김 input */
 .fpHidden {
   position: fixed;
   left: 0;
@@ -109,7 +108,7 @@ html, body {
 /* ===== 하단 영역 ===== */
 .calHost,
 .cfgPanel {
-  width: 480px;
+  width: 600px;
   height: 155px;
   box-sizing: border-box;
   display: none;
@@ -122,15 +121,17 @@ html, body {
 
 /* ===== 달력 ===== */
 .calHost {
-  overflow: hidden;
+  overflow-y: auto;   /* 핵심: 스크롤 */
+  overflow-x: hidden;
   border-top: 1px solid rgba(0,0,0,0.10);
   background: rgba(255,255,255,0.96);
   padding: 2px 4px 0 4px;
 }
 
 .calHost .flatpickr-calendar {
-  width: 472px !important;
-  max-width: 472px !important;
+  width: 592px !important;
+  max-width: 592px !important;
+  min-height: max-content !important;
   position: static !important;
   margin: 0 !important;
   box-shadow: none !important;
@@ -143,13 +144,13 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 28px !important;
+  height: 30px !important;
   margin-bottom: 2px;
   position: relative;
 }
 
 .calHost .flatpickr-month {
-  height: 28px !important;
+  height: 30px !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -161,7 +162,7 @@ html, body {
   justify-content: center;
   gap: 4px;
   width: auto !important;
-  height: 28px !important;
+  height: 30px !important;
   padding: 0 !important;
   left: auto !important;
   font-size: 16px !important;
@@ -170,7 +171,7 @@ html, body {
 
 .calHost .flatpickr-current-month .numInputWrapper {
   order: 1;
-  width: 68px !important;
+  width: 72px !important;
 }
 
 .calHost .flatpickr-current-month .flatpickr-monthDropdown-months {
@@ -190,7 +191,7 @@ html, body {
   display: flex !important;
   align-items: center;
   justify-content: center;
-  height: 28px !important;
+  height: 30px !important;
 }
 
 .calHost .flatpickr-prev-month svg,
@@ -200,13 +201,13 @@ html, body {
 }
 
 .calHost .flatpickr-weekdays {
-  height: 22px !important;
+  height: 24px !important;
   margin-bottom: 2px;
 }
 
 .calHost .flatpickr-weekday {
-  height: 22px !important;
-  line-height: 22px !important;
+  height: 24px !important;
+  line-height: 24px !important;
   font-size: 13px !important;
   font-weight: 800;
 }
@@ -219,11 +220,12 @@ html, body {
   width: 100% !important;
   min-width: 100% !important;
   max-width: 100% !important;
+  height: auto !important;
 }
 
 .calHost .flatpickr-day {
-  height: 20px !important;
-  line-height: 20px !important;
+  height: 22px !important;
+  line-height: 22px !important;
   font-size: 13px !important;
   font-weight: 700;
   max-width: calc(100% / 7) !important;
