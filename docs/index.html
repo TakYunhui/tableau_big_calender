@@ -6,7 +6,7 @@
   <title>조회기간</title>
 
   <link rel="stylesheet" href="./lib/flatpickr.min.css" />
-  <link rel="stylesheet" href="./styles.css?v=20260306_03" />
+  <link rel="stylesheet" href="./styles.css?v=20260306_04" />
 </head>
 
 <body>
@@ -23,7 +23,7 @@
 
     <div class="topActions">
       <button id="rangeModeBtn" class="miniBtn" type="button">기간변경</button>
-      <button id="applyBtn" class="miniBtn primary" type="button">적용</button>
+      <button id="applyBtn" class="miniBtn" type="button">적용</button>
       <button id="settingsBtn" class="settingsBtn" type="button" aria-label="설정">⚙</button>
     </div>
   </div>
@@ -71,9 +71,10 @@
 
   <input id="fpHidden" class="fpHidden" type="text" />
   <div id="hint" class="hint"></div>
+  <div id="toast" class="toast" aria-live="polite"></div>
 
   <script src="./lib/flatpickr.min.js"></script>
   <script src="https://extensions.tableauusercontent.com/resources/tableau.extensions.1.latest.min.js"></script>
-  <script src="./main.js?v=20260306_03"></script>
+  <script src="./main.js?v=20260306_04"></script>
 </body>
 </html>
