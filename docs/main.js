@@ -265,28 +265,28 @@ function initFlatpickr(settings) {
     prevArrow: "<",
     nextArrow: ">",
 
-    formatDate: (date, format, locale) => {
-      if (format === "Y-m-d") return toISODateOnly(date);
-      return flatpickr.formatDate(date, format);
+    onReady: (selectedDates, dateStr, instance) => {
+      const currentMonth = instance.calendarContainer.querySelector(".flatpickr-current-month");
+      const yearWrap = currentMonth?.querySelector(".numInputWrapper");
+      const monthSelect = currentMonth?.querySelector(".flatpickr-monthDropdown-months");
+
+      if (currentMonth && yearWrap && monthSelect) {
+        currentMonth.appendChild(yearWrap);
+        currentMonth.appendChild(monthSelect);
+      }
     },
+
+    onOpen: () => setHint(""),
 
     onChange: (selectedDates) => {
       if (calendarMode === "start") {
         const picked = selectedDates[0] || null;
         if (!picked) return;
-
         pendingStartDate = picked;
-        if (pendingEndDate && pendingStartDate > pendingEndDate) {
-          pendingEndDate = pendingStartDate;
-        }
       } else if (calendarMode === "end") {
         const picked = selectedDates[0] || null;
         if (!picked) return;
-
         pendingEndDate = picked;
-        if (pendingStartDate && pendingEndDate < pendingStartDate) {
-          pendingStartDate = pendingEndDate;
-        }
       } else {
         const start = selectedDates[0] || null;
         const end = selectedDates[1] || null;
@@ -360,6 +360,16 @@ async function applyPendingDates() {
 
   if (settings.kind === "range" && !finalEnd) {
     setHint("종료날짜를 선택하세요.");
+    return;
+  }
+
+  if (
+    settings.kind === "range" &&
+    pendingStartDate &&
+    finalEnd &&
+    pendingStartDate > finalEnd
+  ) {
+    setHint("시작날짜는 종료날짜보다 클 수 없습니다.");
     return;
   }
 
