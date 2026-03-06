@@ -9,11 +9,11 @@ const SETTINGS_KEYS = {
 
 const DEFAULTS = {
   kind: "range",
-  format: "Y-m-d",
+  format: "Y-mm-dd",
 };
 
 const FRAME_WIDTH = 600;
-const FRAME_HEIGHT = 360;
+const FRAME_HEIGHT = 280;
 
 let fp = null;
 let unregisterParamHandlers = [];
@@ -326,10 +326,28 @@ function getKoLocale() {
   };
 }
 
-function getCurrentSingleModeDate() {
-  if (calendarMode === "start") return pendingStartDate;
-  if (calendarMode === "end") return pendingEndDate;
-  return null;
+function applyMonthHeaderPatch(instance) {
+  const calendar = instance?.calendarContainer;
+  if (!calendar) return;
+
+  const monthsWrap = calendar.querySelector(".flatpickr-months");
+  const currentMonth = calendar.querySelector(".flatpickr-current-month");
+  const prevBtn = calendar.querySelector(".flatpickr-prev-month");
+  const nextBtn = calendar.querySelector(".flatpickr-next-month");
+  const yearWrap = currentMonth?.querySelector(".numInputWrapper");
+  const monthSelect = currentMonth?.querySelector(".flatpickr-monthDropdown-months");
+
+  if (currentMonth && yearWrap && monthSelect) {
+    currentMonth.appendChild(yearWrap);
+    currentMonth.appendChild(monthSelect);
+  }
+
+  if (monthsWrap && prevBtn && nextBtn && currentMonth) {
+    monthsWrap.innerHTML = "";
+    monthsWrap.appendChild(prevBtn);
+    monthsWrap.appendChild(currentMonth);
+    monthsWrap.appendChild(nextBtn);
+  }
 }
 
 function initFlatpickr(settings) {
@@ -358,6 +376,18 @@ function initFlatpickr(settings) {
     monthSelectorType: "static",
     prevArrow: "<",
     nextArrow: ">",
+
+    onReady: (selectedDates, dateStr, instance) => {
+      applyMonthHeaderPatch(instance);
+    },
+
+    onMonthChange: (selectedDates, dateStr, instance) => {
+      applyMonthHeaderPatch(instance);
+    },
+
+    onYearChange: (selectedDates, dateStr, instance) => {
+      applyMonthHeaderPatch(instance);
+    },
 
     onOpen: () => setHint(""),
 
@@ -398,38 +428,6 @@ function initFlatpickr(settings) {
       }
 
       updateActionStates();
-    },
-
-    onDayCreate: (dObj, dStr, instance, dayElem) => {
-      const dateObj = dayElem.dateObj;
-      if (!dateObj) return;
-
-      const selectedSingleDate = getCurrentSingleModeDate();
-
-      if (
-        isCalendarOpen &&
-        fpMode === "single" &&
-        selectedSingleDate &&
-        isSameDate(dateObj, selectedSingleDate)
-      ) {
-        dayElem.classList.add("same-date-close");
-        dayElem.title = "같은 날짜를 다시 누르면 닫힙니다.";
-      }
-
-      dayElem.addEventListener("mousedown", (e) => {
-        if (!isCalendarOpen) return;
-        if (fpMode !== "single") return;
-
-        const currentDate = getCurrentSingleModeDate();
-        if (!currentDate) return;
-
-        if (isSameDate(dateObj, currentDate)) {
-          e.preventDefault();
-          e.stopPropagation();
-          closeCalendarUI();
-          setHint("");
-        }
-      });
     }
   });
 
@@ -512,13 +510,13 @@ function updatePrimaryModeButton() {
   const enabled = !isApplying && (isRangeOpen || canEnableRangeMode(settings));
   btn.disabled = !enabled;
 
-  btn.classList.remove("btn-range-active", "btn-range-inactive", "btn-range-cancel");
+  btn.classList.remove("btn-secondary-active", "btn-secondary-inactive", "btn-secondary-cancel");
   if (isRangeOpen) {
-    btn.classList.add(enabled ? "btn-range-cancel" : "btn-range-inactive");
+    btn.classList.add(enabled ? "btn-secondary-cancel" : "btn-secondary-inactive");
   } else if (enabled) {
-    btn.classList.add("btn-range-active");
+    btn.classList.add("btn-secondary-active");
   } else {
-    btn.classList.add("btn-range-inactive");
+    btn.classList.add("btn-secondary-inactive");
   }
 }
 
@@ -532,13 +530,13 @@ function updateQuickModeButton() {
   const enabled = !isApplying && (isOpen || canEnableQuickMode());
   btn.disabled = !enabled;
 
-  btn.classList.remove("btn-quick-active", "btn-quick-inactive", "btn-quick-cancel");
+  btn.classList.remove("btn-secondary-active", "btn-secondary-inactive", "btn-secondary-cancel");
   if (isOpen) {
-    btn.classList.add(enabled ? "btn-quick-cancel" : "btn-quick-inactive");
+    btn.classList.add(enabled ? "btn-secondary-cancel" : "btn-secondary-inactive");
   } else if (enabled) {
-    btn.classList.add("btn-quick-active");
+    btn.classList.add("btn-secondary-active");
   } else {
-    btn.classList.add("btn-quick-inactive");
+    btn.classList.add("btn-secondary-inactive");
   }
 }
 
@@ -700,7 +698,7 @@ function getTodayRange() {
 
 function getThisWeekRange() {
   const today = startOfDay(new Date());
-  const day = today.getDay();
+  const day = today.getDay(); // 0:일 ~ 6:토
   const diffToMonday = day === 0 ? -6 : 1 - day;
 
   const start = new Date(today);
