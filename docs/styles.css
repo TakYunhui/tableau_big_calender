@@ -311,7 +311,7 @@ html, body {
   border-radius: 0 !important;
   background: #fff !important;
   display: block !important;
-  overflow: hidden !important;
+  overflow: visible !important;
   box-sizing: border-box !important;
 }
 
