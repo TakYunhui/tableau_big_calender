@@ -26,7 +26,7 @@ html, body {
   gap: 6px;
   white-space: nowrap;
   flex: 1 1 auto;
-  min-width: max-content;   /* 핵심 */
+  min-width: max-content;
 }
 
 .label {
@@ -51,14 +51,14 @@ html, body {
   cursor: pointer;
   text-decoration: none;
   border-radius: 9px;
-  padding: 5px 8px;       /* 기존 10 → 8 */
+  padding: 5px 8px;
   border: 1px solid rgba(0, 0, 0, 0.12);
   background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(244,247,251,0.98));
   box-shadow:
     0 1px 2px rgba(0,0,0,0.05),
     0 0 0 1px rgba(255,255,255,0.8) inset;
   font-size: 15px;
-  flex-shrink: 0;         /* 핵심 */
+  flex-shrink: 0;
 }
 
 .dateValue:hover {
@@ -82,29 +82,59 @@ html, body {
   font-size: 14px;
   font-weight: 800;
   color: rgba(0, 0, 0, 0.24);
-  margin: 0 1px;
+  margin: 0;
 }
 
 .topActions {
   display: flex;
   align-items: center;
-  gap: 6px;
-  flex-shrink: 1;   /* 핵심 */
+  gap: 4px;
+  flex-shrink: 1;
+  min-width: 0;
 }
 
 .miniBtn {
   height: 30px;
-  min-width: 64px;      /* 기존 76 */
-  padding: 0 10px;      /* 기존 12 */
+  min-width: 64px;
+  padding: 0 10px;
   border-radius: 9px;
   cursor: pointer;
   font-size: 12px;
   font-weight: 800;
   line-height: 1;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease,
+    transform 0.16s ease;
 }
 
 .miniBtn:hover:not(:disabled) {
   transform: translateY(-1px);
+}
+
+/* 버튼별 최소폭 */
+.btn-range-active,
+.btn-range-inactive,
+.btn-range-cancel {
+  min-width: 82px;
+}
+
+.btn-quick-active,
+.btn-quick-inactive,
+.btn-quick-cancel {
+  min-width: 72px;
+}
+
+.btn-primary-active,
+.btn-primary-inactive {
+  min-width: 62px;
 }
 
 /* 기간변경 버튼: 파란 계열 */
@@ -128,14 +158,17 @@ html, body {
   box-shadow: none;
 }
 
+/* 기간변경 취소: 빨간 계열 */
 .btn-range-cancel {
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: #f5f6f8;
-  color: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(214, 67, 67, 0.30);
+  background: rgba(214, 67, 67, 0.10);
+  color: #b42323;
+  box-shadow: 0 1px 2px rgba(214, 67, 67, 0.08);
 }
 
 .btn-range-cancel:hover:not(:disabled) {
-  background: #eceff3;
+  background: rgba(214, 67, 67, 0.16);
+  border-color: rgba(214, 67, 67, 0.42);
 }
 
 /* 퀵선택 버튼: 초록 계열 */
@@ -159,14 +192,17 @@ html, body {
   box-shadow: none;
 }
 
+/* 퀵선택 취소: 빨간 계열 */
 .btn-quick-cancel {
-  border: 1px solid rgba(0, 0, 0, 0.18);
-  background: #f5f6f8;
-  color: rgba(0, 0, 0, 0.72);
+  border: 1px solid rgba(214, 67, 67, 0.30);
+  background: rgba(214, 67, 67, 0.10);
+  color: #b42323;
+  box-shadow: 0 1px 2px rgba(214, 67, 67, 0.08);
 }
 
 .btn-quick-cancel:hover:not(:disabled) {
-  background: #eceff3;
+  background: rgba(214, 67, 67, 0.16);
+  border-color: rgba(214, 67, 67, 0.42);
 }
 
 /* 적용 버튼 */
@@ -315,7 +351,7 @@ html, body {
   box-sizing: border-box !important;
 }
 
-/* 내부 폭 전부 부모 기준 */
+/* 내부 레이어: 스크롤 콘텐츠가 실제 높이로 늘어나게 */
 .calHost .flatpickr-months,
 .calHost .flatpickr-innerContainer,
 .calHost .flatpickr-rContainer,
@@ -325,6 +361,22 @@ html, body {
   min-width: 100% !important;
   max-width: 100% !important;
   box-sizing: border-box !important;
+}
+
+.calHost .flatpickr-innerContainer,
+.calHost .flatpickr-rContainer,
+.calHost .flatpickr-days,
+.calHost .dayContainer {
+  height: auto !important;
+  min-height: 0 !important;
+  overflow: visible !important;
+}
+
+.calHost .flatpickr-rContainer,
+.calHost .dayContainer {
+  display: flex !important;
+  flex-wrap: wrap !important;
+  align-content: flex-start !important;
 }
 
 /* 상단 월 헤더 */
@@ -447,7 +499,7 @@ html, body {
   box-sizing: border-box !important;
 }
 
-/* 날짜 칸: 기본 배치는 유지하고 선 느낌만 부여 */
+/* 날짜 칸 */
 .calHost .flatpickr-day {
   height: 30px !important;
   line-height: 30px !important;
