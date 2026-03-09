@@ -311,11 +311,11 @@ html, body {
   position: static !important;
   margin: 0 auto !important;
   box-shadow: none !important;
-  border: 1px solid rgba(0, 0, 0, 0.10) !important;
-  border-radius: 12px !important;
-  background: #fff !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: transparent !important;
   display: block !important;
-  overflow: hidden !important;
+  overflow: visible !important;
 }
 
 /* 상단 월 헤더 */
@@ -323,14 +323,14 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 34px !important;
-  margin-bottom: 0;
+  height: 30px !important;
+  margin-bottom: 2px;
   position: relative;
   gap: 6px;
-  padding: 4px 16px;
+  padding: 0 16px;
   box-sizing: border-box;
-  background: #f7f9fc;
-  border-bottom: 1px solid rgba(0,0,0,0.08);
+  background: transparent;
+  border-bottom: 0 !important;
 }
 
 .calHost .flatpickr-month {
@@ -399,24 +399,24 @@ html, body {
 
 /* 요일 헤더 */
 .calHost .flatpickr-weekdays {
-  height: 30px !important;
-  margin-bottom: 0;
-  border-bottom: 1px solid rgba(0,0,0,0.08);
-  background: #fbfcfe;
+  height: 24px !important;
+  margin-bottom: 2px;
+  border-bottom: 0 !important;
+  background: transparent !important;
 }
 
 .calHost .flatpickr-weekdaycontainer {
-  display: grid !important;
-  grid-template-columns: repeat(7, 1fr);
+  display: block !important;
 }
 
+
 .calHost .flatpickr-weekday {
-  height: 30px !important;
-  line-height: 30px !important;
-  font-size: 12px !important;
+  height: 24px !important;
+  line-height: 24px !important;
+  font-size: 13px !important;
   font-weight: 800;
   color: rgba(0,0,0,0.62) !important;
-  border-right: 1px solid rgba(0,0,0,0.06);
+  border-right: 0 !important;
   box-sizing: border-box;
 }
 
@@ -433,22 +433,22 @@ html, body {
   min-width: 100% !important;
   max-width: 100% !important;
   height: auto !important;
-  display: grid !important;
-  grid-template-columns: repeat(7, 1fr);
+  display: block !important;
 }
 
-/* 날짜 칸을 사각 셀처럼 */
+/* 날짜 칸: 그리드 선 제거, 기존 달력처럼 복원 */
 .calHost .flatpickr-day {
-  height: 32px !important;
-  line-height: 32px !important;
+  height: 24px !important;
+  line-height: 24px !important;
   font-size: 13px !important;
   font-weight: 700;
-  width: 100% !important;
-  max-width: none !important;
+  width: auto !important;
+  max-width: calc(100% / 7) !important;
   margin: 0 !important;
-  border-radius: 0 !important;
-  border-right: 1px solid rgba(0,0,0,0.06) !important;
-  border-bottom: 1px solid rgba(0,0,0,0.06) !important;
+  border-right: 0 !important;
+  border-bottom: 0 !important;
+  border: 1px solid transparent !important;
+  border-radius: 4px !important;
   box-sizing: border-box;
 }
 
@@ -472,13 +472,14 @@ html, body {
 .calHost .flatpickr-day.endRange,
 .calHost .flatpickr-day.selected {
   background: #3170f5 !important;
-  border-color: rgba(255,255,255,0.10) !important;
+  border-color: #3170f5 !important;
   color: #fff !important;
+  border-radius: 4px !important;
 }
 
 .calHost .flatpickr-day.inRange {
   background: rgba(49, 112, 245, 0.13) !important;
-  border-color: rgba(0,0,0,0.06) !important;
+  border-color: transparent !important;
   box-shadow: none !important;
 }
 
