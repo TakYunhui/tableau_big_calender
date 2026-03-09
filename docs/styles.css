@@ -311,11 +311,11 @@ html, body {
   position: static !important;
   margin: 0 auto !important;
   box-shadow: none !important;
-  border: 0 !important;
+  border: 1px solid rgba(0,0,0,0.14) !important;
   border-radius: 0 !important;
-  background: transparent !important;
+  background: #fff !important;
   display: block !important;
-  overflow: visible !important;
+  overflow: hidden !important;
 }
 
 /* 상단 월 헤더 */
@@ -323,18 +323,18 @@ html, body {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 30px !important;
-  margin-bottom: 2px;
+  height: 34px !important;
+  margin-bottom: 0;
   position: relative;
   gap: 6px;
-  padding: 0 16px;
+  padding: 0 14px;
   box-sizing: border-box;
-  background: transparent;
-  border-bottom: 0 !important;
+  background: #fff;
+  border-bottom: 1px solid rgba(0,0,0,0.14) !important;
 }
 
 .calHost .flatpickr-month {
-  height: 30px !important;
+  height: 34px !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -347,7 +347,7 @@ html, body {
   justify-content: center;
   gap: 4px;
   width: auto !important;
-  height: 30px !important;
+  height: 34px !important;
   padding: 0 !important;
   left: auto !important;
   font-size: 16px !important;
@@ -379,7 +379,7 @@ html, body {
   display: flex !important;
   align-items: center;
   justify-content: center;
-  height: 30px !important;
+  height: 34px !important;
   width: 24px !important;
   min-width: 24px !important;
   color: rgba(0,0,0,0.78) !important;
@@ -399,29 +399,19 @@ html, body {
 
 /* 요일 헤더 */
 .calHost .flatpickr-weekdays {
-  height: 24px !important;
-  margin-bottom: 2px;
-  border-bottom: 0 !important;
-  background: transparent !important;
+  height: 28px !important;
+  margin-bottom: 0;
+  background: #fff !important;
+  border-bottom: 1px solid rgba(0,0,0,0.10) !important;
 }
-
-.calHost .flatpickr-weekdaycontainer {
-  display: block !important;
-}
-
 
 .calHost .flatpickr-weekday {
-  height: 24px !important;
-  line-height: 24px !important;
-  font-size: 13px !important;
-  font-weight: 800;
-  color: rgba(0,0,0,0.62) !important;
-  border-right: 0 !important;
-  box-sizing: border-box;
-}
-
-.calHost .flatpickr-weekday:last-child {
-  border-right: 0;
+  height: 28px !important;
+  line-height: 28px !important;
+  font-size: 12px !important;
+  font-weight: 700 !important;
+  color: rgba(0,0,0,0.72) !important;
+  background: transparent !important;
 }
 
 .calHost .flatpickr-days {
@@ -433,54 +423,66 @@ html, body {
   min-width: 100% !important;
   max-width: 100% !important;
   height: auto !important;
-  display: block !important;
 }
 
-/* 날짜 칸: 그리드 선 제거, 기존 달력처럼 복원 */
+/* 날짜 칸: 기본 배치는 유지하고 선 느낌만 부여 */
 .calHost .flatpickr-day {
-  height: 24px !important;
-  line-height: 24px !important;
+  height: 28px !important;
+  line-height: 28px !important;
   font-size: 13px !important;
-  font-weight: 700;
-  width: auto !important;
-  max-width: calc(100% / 7) !important;
+  font-weight: 500 !important;
+  width: 14.2857% !important;
+  max-width: 14.2857% !important;
   margin: 0 !important;
-  border-right: 0 !important;
-  border-bottom: 0 !important;
-  border: 1px solid transparent !important;
-  border-radius: 4px !important;
-  box-sizing: border-box;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+  box-sizing: border-box !important;
+  box-shadow:
+    inset -1px 0 0 rgba(0,0,0,0.10),
+    inset 0 -1px 0 rgba(0,0,0,0.10);
 }
 
-.calHost .flatpickr-day:nth-child(7n) {
-  border-right: 0 !important;
+.calHost .flatpickr-day.prevMonthDay,
+.calHost .flatpickr-day.nextMonthDay {
+  color: rgba(0,0,0,0.22) !important;
+  background: #fafafa !important;
 }
 
 .calHost .flatpickr-day:hover {
-  background: rgba(49, 112, 245, 0.07) !important;
+  background: rgba(49, 112, 245, 0.06) !important;
 }
 
 .calHost .flatpickr-day.today {
-  box-shadow: inset 0 0 0 1px rgba(49, 112, 245, 0.38) !important;
+  box-shadow:
+    inset -1px 0 0 rgba(0,0,0,0.10),
+    inset 0 -1px 0 rgba(0,0,0,0.10),
+    inset 0 0 0 1px rgba(49, 112, 245, 0.40) !important;
 }
 
 .calHost .flatpickr-day.same-date-close {
-  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.14) !important;
+  box-shadow:
+    inset -1px 0 0 rgba(0,0,0,0.10),
+    inset 0 -1px 0 rgba(0,0,0,0.10),
+    inset 0 0 0 1px rgba(0,0,0,0.18) !important;
 }
 
 .calHost .flatpickr-day.startRange,
 .calHost .flatpickr-day.endRange,
 .calHost .flatpickr-day.selected {
   background: #3170f5 !important;
-  border-color: #3170f5 !important;
   color: #fff !important;
-  border-radius: 4px !important;
+  box-shadow:
+    inset -1px 0 0 rgba(255,255,255,0.16),
+    inset 0 -1px 0 rgba(255,255,255,0.16) !important;
 }
 
 .calHost .flatpickr-day.inRange {
   background: rgba(49, 112, 245, 0.13) !important;
-  border-color: transparent !important;
-  box-shadow: none !important;
+  color: rgba(0,0,0,0.9) !important;
+  box-shadow:
+    inset -1px 0 0 rgba(0,0,0,0.06),
+    inset 0 -1px 0 rgba(0,0,0,0.06) !important;
 }
 
 .cfgPanel {
