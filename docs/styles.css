@@ -158,7 +158,7 @@ html, body {
   box-shadow: none;
 }
 
-/* 기간변경 취소: 빨간 계열 */
+/* 기간변경 취소 */
 .btn-range-cancel {
   border: 1px solid rgba(214, 67, 67, 0.30);
   background: rgba(214, 67, 67, 0.10);
@@ -192,7 +192,7 @@ html, body {
   box-shadow: none;
 }
 
-/* 퀵선택 취소: 빨간 계열 */
+/* 퀵선택 취소 */
 .btn-quick-cancel {
   border: 1px solid rgba(214, 67, 67, 0.30);
   background: rgba(214, 67, 67, 0.10);
@@ -323,15 +323,14 @@ html, body {
   margin-left: 4px;
 }
 
+/* 확장 전체 높이 200 고정 전제에서 달력 영역 */
 .calHost {
-  height: 250px;
-  overflow-y: auto;
+  height: 136px;
+  overflow: hidden;
   overflow-x: hidden;
   border-top: 1px solid rgba(0,0,0,0.10);
   background: rgba(255,255,255,0.98);
   padding: 6px 8px;
-  scrollbar-width: thin;
-  scrollbar-gutter: stable;
   box-sizing: border-box;
 }
 
@@ -339,7 +338,6 @@ html, body {
 .calHost .flatpickr-calendar {
   width: 100% !important;
   max-width: 100% !important;
-  min-height: max-content !important;
   position: static !important;
   margin: 0 auto !important;
   box-shadow: none !important;
@@ -347,54 +345,30 @@ html, body {
   border-radius: 0 !important;
   background: #fff !important;
   display: block !important;
-  overflow: visible !important;
+  overflow: hidden !important;
   box-sizing: border-box !important;
 }
 
-/* 내부 레이어: 스크롤 콘텐츠가 실제 높이로 늘어나게 */
-.calHost .flatpickr-months,
-.calHost .flatpickr-innerContainer,
-.calHost .flatpickr-rContainer,
-.calHost .flatpickr-days,
-.calHost .dayContainer {
+/* 헤더 */
+.calHost .flatpickr-months {
   width: 100% !important;
   min-width: 100% !important;
   max-width: 100% !important;
-  box-sizing: border-box !important;
-}
-
-.calHost .flatpickr-innerContainer,
-.calHost .flatpickr-rContainer,
-.calHost .flatpickr-days,
-.calHost .dayContainer {
-  height: auto !important;
-  min-height: 0 !important;
-  overflow: visible !important;
-}
-
-.calHost .flatpickr-rContainer,
-.calHost .dayContainer {
-  display: flex !important;
-  flex-wrap: wrap !important;
-  align-content: flex-start !important;
-}
-
-/* 상단 월 헤더 */
-.calHost .flatpickr-months {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 34px !important;
+  height: 32px !important;
   margin-bottom: 0;
   position: relative;
   gap: 6px;
   padding: 0 10px;
+  box-sizing: border-box !important;
   background: #fff;
   border-bottom: 1px solid rgba(0,0,0,0.14) !important;
 }
 
 .calHost .flatpickr-month {
-  height: 34px !important;
+  height: 32px !important;
   display: flex;
   align-items: center;
   justify-content: center;
@@ -408,10 +382,10 @@ html, body {
   justify-content: center;
   gap: 4px;
   width: auto !important;
-  height: 34px !important;
+  height: 32px !important;
   padding: 0 !important;
   left: auto !important;
-  font-size: 16px !important;
+  font-size: 15px !important;
   line-height: 1 !important;
   position: static !important;
   flex: 0 1 auto;
@@ -420,17 +394,17 @@ html, body {
 
 .calHost .flatpickr-current-month .numInputWrapper {
   order: 1;
-  width: 68px !important;
+  width: 66px !important;
 }
 
 .calHost .flatpickr-current-month .flatpickr-monthDropdown-months {
   order: 2;
-  max-width: 100px;
+  max-width: 92px;
 }
 
 .calHost .flatpickr-current-month .flatpickr-monthDropdown-months,
 .calHost .flatpickr-current-month input.cur-year {
-  font-size: 16px !important;
+  font-size: 15px !important;
   font-weight: 800;
 }
 
@@ -442,7 +416,7 @@ html, body {
   display: flex !important;
   align-items: center;
   justify-content: center;
-  height: 34px !important;
+  height: 32px !important;
   width: 22px !important;
   min-width: 22px !important;
   color: rgba(0,0,0,0.78) !important;
@@ -462,9 +436,9 @@ html, body {
 
 /* 요일 헤더 */
 .calHost .flatpickr-weekdays {
-  height: 28px !important;
-  margin-bottom: 0;
   width: 100% !important;
+  height: 24px !important;
+  margin-bottom: 0;
   background: #fff !important;
   border-bottom: 1px solid rgba(0,0,0,0.10) !important;
   box-sizing: border-box !important;
@@ -479,9 +453,9 @@ html, body {
 }
 
 .calHost .flatpickr-weekday {
-  height: 28px !important;
-  line-height: 28px !important;
-  font-size: 12px !important;
+  height: 24px !important;
+  line-height: 24px !important;
+  font-size: 11px !important;
   font-weight: 700 !important;
   color: rgba(0,0,0,0.72) !important;
   background: transparent !important;
@@ -490,24 +464,48 @@ html, body {
   box-sizing: border-box !important;
 }
 
-/* 날짜 영역 */
+/* flatpickr 내부 컨테이너는 숨기고, 날짜 본문만 스크롤 */
+.calHost .flatpickr-innerContainer,
+.calHost .flatpickr-rContainer {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
 .calHost .flatpickr-days {
   width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  height: 72px !important;
+  max-height: 72px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  display: block !important;
+  box-sizing: border-box !important;
+  scrollbar-width: thin;
 }
 
 .calHost .dayContainer {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: max-content !important;
+  display: block !important;
   box-sizing: border-box !important;
 }
 
 /* 날짜 칸 */
 .calHost .flatpickr-day {
-  height: 30px !important;
-  line-height: 30px !important;
-  font-size: 13px !important;
+  height: 24px !important;
+  line-height: 24px !important;
+  font-size: 12px !important;
   font-weight: 500 !important;
   width: 14.2857% !important;
   max-width: 14.2857% !important;
-  flex: 0 0 14.2857% !important;
   margin: 0 !important;
   border: 0 !important;
   border-radius: 0 !important;
