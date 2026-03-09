@@ -122,6 +122,17 @@ function isSameDate(a, b) {
   return toISODateOnly(a) === toISODateOnly(b);
 }
 
+function startOfDay(d) {
+  const x = new Date(d);
+  x.setHours(0, 0, 0, 0);
+  return x;
+}
+
+function isTodayDate(d) {
+  if (!d) return false;
+  return isSameDate(startOfDay(d), startOfDay(new Date()));
+}
+
 function updateValueHighlightState() {
   const startEl = qs("startText");
   const endEl = qs("endText");
@@ -356,6 +367,28 @@ function getCurrentSingleModeDate() {
   return null;
 }
 
+function getOriginalSingleModeDate() {
+  if (calendarMode === "start") return originalStartDate;
+  if (calendarMode === "end") return originalEndDate;
+  return null;
+}
+
+function canCloseCalendarOnSameDateClick(dateObj) {
+  if (!isCalendarOpen) return false;
+  if (calendarMode !== "start" && calendarMode !== "end") return false;
+
+  const currentDate = getCurrentSingleModeDate();
+  const appliedDate = getOriginalSingleModeDate();
+
+  if (!currentDate || !appliedDate) return false;
+
+  return (
+    isSameDate(dateObj, currentDate) &&
+    isSameDate(currentDate, appliedDate) &&
+    isTodayDate(currentDate)
+  );
+}
+
 function initFlatpickr(settings) {
   destroyFP();
   if (!ensureFlatpickrLoaded()) return;
@@ -440,31 +473,18 @@ function initFlatpickr(settings) {
       const dateObj = dayElem.dateObj;
       if (!dateObj) return;
 
-      const selectedSingleDate = getCurrentSingleModeDate();
-
-      if (
-        isCalendarOpen &&
-        fpMode === "single" &&
-        selectedSingleDate &&
-        isSameDate(dateObj, selectedSingleDate)
-      ) {
+      if (canCloseCalendarOnSameDateClick(dateObj)) {
         dayElem.classList.add("same-date-close");
-        dayElem.title = "같은 날짜를 다시 누르면 닫힙니다.";
+        dayElem.title = "오늘 날짜가 이미 적용되어 있어 다시 누르면 닫힙니다.";
       }
 
       dayElem.addEventListener("mousedown", (e) => {
-        if (!isCalendarOpen) return;
-        if (fpMode !== "single") return;
+        if (!canCloseCalendarOnSameDateClick(dateObj)) return;
 
-        const currentDate = getCurrentSingleModeDate();
-        if (!currentDate) return;
-
-        if (isSameDate(dateObj, currentDate)) {
-          e.preventDefault();
-          e.stopPropagation();
-          closeCalendarUI();
-          setHint("");
-        }
+        e.preventDefault();
+        e.stopPropagation();
+        closeCalendarUI();
+        setHint("");
       });
     }
   });
@@ -723,12 +743,6 @@ async function applyPendingDates() {
 }
 
 /* ===== 퀵 선택 ===== */
-function startOfDay(d) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
 function getTodayRange() {
   const today = startOfDay(new Date());
   return { start: today, end: today };
