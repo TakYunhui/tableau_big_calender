@@ -294,7 +294,7 @@ html, body {
 }
 
 .calHost {
-  height: 206px;
+  height: 250px;
   overflow-y: auto;
   overflow-x: hidden;
   border-top: 1px solid rgba(0,0,0,0.10);
