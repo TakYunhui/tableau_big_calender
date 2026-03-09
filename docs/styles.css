@@ -8,7 +8,7 @@ html, body {
 
 .rangeBar {
   width: 600px;
-  height: 46px;
+  height: 50px;
   display: flex;
   align-items: center;
   justify-content: space-between;
@@ -23,7 +23,7 @@ html, body {
 .rangeLine {
   display: flex;
   align-items: center;
-  gap: 6px;
+  gap: 8px;
   min-width: 0;
   overflow: hidden;
   white-space: nowrap;
@@ -31,36 +31,56 @@ html, body {
 }
 
 .label {
-  font-size: 15px;
+  font-size: 14px;
   font-weight: 800;
-  color: rgba(0, 0, 0, 0.75);
+  color: rgba(0, 0, 0, 0.72);
 }
 
 .value {
   font-size: 15px;
   font-weight: 900;
   color: rgba(0, 0, 0, 0.95);
-  transition: color 0.18s ease, background-color 0.18s ease, box-shadow 0.18s ease;
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
 }
 
 .dateValue {
   cursor: pointer;
-  text-decoration: underline;
-  text-underline-offset: 2px;
-  border-radius: 6px;
-  padding: 1px 4px;
+  text-decoration: none;
+  border-radius: 9px;
+  padding: 5px 10px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(244,247,251,0.98));
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.05),
+    0 0 0 1px rgba(255,255,255,0.8) inset;
+}
+
+.dateValue:hover {
+  border-color: rgba(49, 112, 245, 0.28);
+  box-shadow:
+    0 2px 6px rgba(49, 112, 245, 0.10),
+    0 0 0 1px rgba(49, 112, 245, 0.08) inset;
+  transform: translateY(-1px);
 }
 
 .dateValue.pending {
-  color: #3170f5;
+  color: #245fdc;
   background: rgba(49, 112, 245, 0.10);
-  box-shadow: 0 0 0 1px rgba(49, 112, 245, 0.18) inset;
+  border-color: rgba(49, 112, 245, 0.30);
+  box-shadow:
+    0 2px 8px rgba(49, 112, 245, 0.12),
+    0 0 0 1px rgba(49, 112, 245, 0.10) inset;
 }
 
 .sep {
   font-size: 14px;
   font-weight: 800;
-  color: rgba(0, 0, 0, 0.28);
+  color: rgba(0, 0, 0, 0.24);
   margin: 0 1px;
 }
 
@@ -85,40 +105,77 @@ html, body {
     color 0.16s ease,
     border-color 0.16s ease,
     box-shadow 0.16s ease,
-    opacity 0.16s ease;
+    opacity 0.16s ease,
+    transform 0.16s ease;
 }
 
-/* 왼쪽 버튼: 보조 액션 */
-.btn-secondary-active {
+.miniBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
+}
+
+/* 기간변경 버튼: 파란 계열 */
+.btn-range-active {
   border: 1px solid rgba(49, 112, 245, 0.32);
   background: rgba(49, 112, 245, 0.08);
   color: #245fdc;
 }
 
-.btn-secondary-active:hover:not(:disabled) {
+.btn-range-active:hover:not(:disabled) {
   background: rgba(49, 112, 245, 0.14);
   border-color: rgba(49, 112, 245, 0.42);
 }
 
-.btn-secondary-inactive,
-.btn-secondary-inactive:disabled {
+.btn-range-inactive,
+.btn-range-inactive:disabled {
   border: 1px solid rgba(0, 0, 0, 0.10);
   background: #eef2f7;
   color: rgba(0, 0, 0, 0.42);
   cursor: default;
+  box-shadow: none;
 }
 
-.btn-secondary-cancel {
+.btn-range-cancel {
   border: 1px solid rgba(0, 0, 0, 0.18);
   background: #f5f6f8;
   color: rgba(0, 0, 0, 0.72);
 }
 
-.btn-secondary-cancel:hover:not(:disabled) {
+.btn-range-cancel:hover:not(:disabled) {
   background: #eceff3;
 }
 
-/* 오른쪽 버튼: 주 액션 */
+/* 퀵선택 버튼: 초록 계열 */
+.btn-quick-active {
+  border: 1px solid rgba(34, 154, 88, 0.34);
+  background: rgba(34, 154, 88, 0.10);
+  color: #197447;
+}
+
+.btn-quick-active:hover:not(:disabled) {
+  background: rgba(34, 154, 88, 0.16);
+  border-color: rgba(34, 154, 88, 0.44);
+}
+
+.btn-quick-inactive,
+.btn-quick-inactive:disabled {
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: #eef2f7;
+  color: rgba(0, 0, 0, 0.42);
+  cursor: default;
+  box-shadow: none;
+}
+
+.btn-quick-cancel {
+  border: 1px solid rgba(0, 0, 0, 0.18);
+  background: #f5f6f8;
+  color: rgba(0, 0, 0, 0.72);
+}
+
+.btn-quick-cancel:hover:not(:disabled) {
+  background: #eceff3;
+}
+
+/* 적용 버튼 */
 .btn-primary-active {
   border: 1px solid #3170f5;
   background: #3170f5;
@@ -163,7 +220,7 @@ html, body {
 }
 
 .hint {
-  margin-top: 2px;
+  margin-top: 3px;
   font-size: 11px;
   color: rgba(0,0,0,0.62);
   min-height: 14px;
@@ -188,7 +245,7 @@ html, body {
 .quickHost {
   min-height: 48px;
   border-top: 1px solid rgba(0,0,0,0.10);
-  background: rgba(255,255,255,0.96);
+  background: rgba(255,255,255,0.98);
   padding: 8px 10px;
 }
 
@@ -203,9 +260,9 @@ html, body {
   height: 28px;
   padding: 0 12px;
   border-radius: 999px;
-  border: 1px solid rgba(49, 112, 245, 0.18);
-  background: rgba(49, 112, 245, 0.06);
-  color: #245fdc;
+  border: 1px solid rgba(34, 154, 88, 0.22);
+  background: rgba(34, 154, 88, 0.07);
+  color: #197447;
   font-size: 11px;
   font-weight: 800;
   cursor: pointer;
@@ -213,19 +270,21 @@ html, body {
     background-color 0.16s ease,
     border-color 0.16s ease,
     color 0.16s ease,
-    box-shadow 0.16s ease;
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
 }
 
 .quickBtn:hover:not(:disabled) {
-  background: rgba(49, 112, 245, 0.12);
-  border-color: rgba(49, 112, 245, 0.28);
+  background: rgba(34, 154, 88, 0.13);
+  border-color: rgba(34, 154, 88, 0.32);
+  transform: translateY(-1px);
 }
 
 .quickBtn.selected {
-  background: #3170f5;
-  border-color: #3170f5;
+  background: #229a58;
+  border-color: #229a58;
   color: #fff;
-  box-shadow: 0 1px 2px rgba(49, 112, 245, 0.22);
+  box-shadow: 0 1px 2px rgba(34, 154, 88, 0.24);
 }
 
 .quickHint {
@@ -235,15 +294,16 @@ html, body {
 }
 
 .calHost {
-  height: 178px;
+  height: 186px;
   overflow-y: auto;
   overflow-x: hidden;
   border-top: 1px solid rgba(0,0,0,0.10);
-  background: rgba(255,255,255,0.96);
-  padding: 2px 8px 0 8px;
+  background: rgba(255,255,255,0.98);
+  padding: 6px 8px 6px 8px;
   scrollbar-width: thin;
 }
 
+/* 달력 외곽 */
 .calHost .flatpickr-calendar {
   width: 584px !important;
   max-width: 584px !important;
@@ -251,21 +311,26 @@ html, body {
   position: static !important;
   margin: 0 auto !important;
   box-shadow: none !important;
-  border: 0 !important;
-  background: transparent !important;
+  border: 1px solid rgba(0, 0, 0, 0.10) !important;
+  border-radius: 12px !important;
+  background: #fff !important;
   display: block !important;
+  overflow: hidden !important;
 }
 
+/* 상단 월 헤더 */
 .calHost .flatpickr-months {
   display: flex;
   align-items: center;
   justify-content: center;
-  height: 30px !important;
-  margin-bottom: 2px;
+  height: 34px !important;
+  margin-bottom: 0;
   position: relative;
   gap: 6px;
-  padding: 0 16px;
+  padding: 4px 16px;
   box-sizing: border-box;
+  background: #f7f9fc;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
 }
 
 .calHost .flatpickr-month {
@@ -332,16 +397,31 @@ html, body {
   height: 14px !important;
 }
 
+/* 요일 헤더 */
 .calHost .flatpickr-weekdays {
-  height: 24px !important;
-  margin-bottom: 2px;
+  height: 30px !important;
+  margin-bottom: 0;
+  border-bottom: 1px solid rgba(0,0,0,0.08);
+  background: #fbfcfe;
+}
+
+.calHost .flatpickr-weekdaycontainer {
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr);
 }
 
 .calHost .flatpickr-weekday {
-  height: 24px !important;
-  line-height: 24px !important;
-  font-size: 13px !important;
+  height: 30px !important;
+  line-height: 30px !important;
+  font-size: 12px !important;
   font-weight: 800;
+  color: rgba(0,0,0,0.62) !important;
+  border-right: 1px solid rgba(0,0,0,0.06);
+  box-sizing: border-box;
+}
+
+.calHost .flatpickr-weekday:last-child {
+  border-right: 0;
 }
 
 .calHost .flatpickr-days {
@@ -353,35 +433,58 @@ html, body {
   min-width: 100% !important;
   max-width: 100% !important;
   height: auto !important;
+  display: grid !important;
+  grid-template-columns: repeat(7, 1fr);
 }
 
+/* 날짜 칸을 사각 셀처럼 */
 .calHost .flatpickr-day {
-  height: 24px !important;
-  line-height: 24px !important;
+  height: 32px !important;
+  line-height: 32px !important;
   font-size: 13px !important;
   font-weight: 700;
-  max-width: calc(100% / 7) !important;
+  width: 100% !important;
+  max-width: none !important;
   margin: 0 !important;
+  border-radius: 0 !important;
+  border-right: 1px solid rgba(0,0,0,0.06) !important;
+  border-bottom: 1px solid rgba(0,0,0,0.06) !important;
+  box-sizing: border-box;
+}
+
+.calHost .flatpickr-day:nth-child(7n) {
+  border-right: 0 !important;
+}
+
+.calHost .flatpickr-day:hover {
+  background: rgba(49, 112, 245, 0.07) !important;
+}
+
+.calHost .flatpickr-day.today {
+  box-shadow: inset 0 0 0 1px rgba(49, 112, 245, 0.38) !important;
+}
+
+.calHost .flatpickr-day.same-date-close {
+  box-shadow: inset 0 0 0 1px rgba(0,0,0,0.14) !important;
 }
 
 .calHost .flatpickr-day.startRange,
 .calHost .flatpickr-day.endRange,
 .calHost .flatpickr-day.selected {
-  border-radius: 4px !important;
   background: #3170f5 !important;
-  border-color: #3170f5 !important;
+  border-color: rgba(255,255,255,0.10) !important;
   color: #fff !important;
 }
 
 .calHost .flatpickr-day.inRange {
-  background: rgba(49, 112, 245, 0.12) !important;
-  border-color: transparent !important;
+  background: rgba(49, 112, 245, 0.13) !important;
+  border-color: rgba(0,0,0,0.06) !important;
   box-shadow: none !important;
 }
 
 .cfgPanel {
   height: 178px;
-  background: rgba(255,255,255,0.96);
+  background: rgba(255,255,255,0.98);
   border-top: 1px solid rgba(0,0,0,0.10);
   padding: 8px 10px;
   overflow: auto;
