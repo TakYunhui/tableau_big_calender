@@ -1,1153 +1,638 @@
-/* global tableau, flatpickr */
-
-const SETTINGS_KEYS = {
-  kind: "date_kind",
-  startParam: "date_start_param",
-  endParam: "date_end_param",
-  format: "date_format",
-};
-
-const DEFAULTS = {
-  kind: "range",
-  format: "Y-mm-dd",
-};
-
-const FRAME_WIDTH = 600;
-const FRAME_HEIGHT = 280;
-
-let fp = null;
-let unregisterParamHandlers = [];
-
-let isConfigOpen = false;
-let isCalendarOpen = false;
-let isQuickOpen = false;
-let isApplying = false;
-
-let pendingStartDate = null;
-let pendingEndDate = null;
-let originalStartDate = null;
-let originalEndDate = null;
-
-let calendarMode = "range"; // "start" | "end" | "range"
-let hasUserSelectionInCurrentOpen = false;
-let toastTimer = null;
-let selectedQuickType = "";
-
-function qs(id) {
-  return document.getElementById(id);
-}
-
-function setHint(msg) {
-  const el = qs("hint");
-  if (el) el.textContent = msg || "";
-}
-
-function setCfgHint(msg) {
-  const el = qs("cfgHint");
-  if (el) el.textContent = msg || "";
-}
-
-function showToast(msg) {
-  const el = qs("toast");
-  if (!el) return;
-
-  el.textContent = msg || "";
-  el.classList.add("show");
-
-  if (toastTimer) clearTimeout(toastTimer);
-  toastTimer = setTimeout(() => {
-    el.classList.remove("show");
-  }, 2200);
-}
-
-function isAuthoringMode() {
-  return tableau?.extensions?.environment?.mode === "authoring";
-}
-
-function loadSettings() {
-  const s = tableau.extensions.settings;
-  return {
-    kind: s.get(SETTINGS_KEYS.kind) || DEFAULTS.kind,
-    startParam: s.get(SETTINGS_KEYS.startParam) || "",
-    endParam: s.get(SETTINGS_KEYS.endParam) || "",
-    format: s.get(SETTINGS_KEYS.format) || DEFAULTS.format,
-  };
-}
-
-async function setFrameSizeFixed() {
-  try {
-    if (tableau?.extensions?.ui?.setFrameSizeAsync) {
-      await tableau.extensions.ui.setFrameSizeAsync(FRAME_WIDTH, FRAME_HEIGHT);
-    } else if (tableau?.extensions?.ui?.resizeAsync) {
-      await tableau.extensions.ui.resizeAsync(FRAME_WIDTH, FRAME_HEIGHT);
-    }
-  } catch (e) {
-    console.warn("setFrameSizeFixed failed:", e);
-  }
-}
-
-async function getDashboard() {
-  return tableau.extensions.dashboardContent.dashboard;
-}
-
-async function getParametersMap() {
-  const dash = await getDashboard();
-  const params = await dash.getParametersAsync();
-  const map = new Map();
-  params.forEach((p) => map.set(p.name, p));
-  return map;
-}
-
-function toISODateOnly(d) {
-  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
-  const y = d.getFullYear();
-  const m = String(d.getMonth() + 1).padStart(2, "0");
-  const day = String(d.getDate()).padStart(2, "0");
-  return `${y}-${m}-${day}`;
-}
-
-function cloneDate(d) {
-  return d ? new Date(d.getTime()) : null;
-}
-
-function parseDisplayToDate(text) {
-  if (!text || text === "-") return null;
-  const d = new Date(text);
-  return Number.isNaN(d.getTime()) ? null : d;
-}
-
-function isSameDate(a, b) {
-  if (!a && !b) return true;
-  if (!a || !b) return false;
-  return toISODateOnly(a) === toISODateOnly(b);
-}
-
-function startOfDay(d) {
-  const x = new Date(d);
-  x.setHours(0, 0, 0, 0);
-  return x;
-}
-
-function isTodayDate(d) {
-  if (!d) return false;
-  return isSameDate(startOfDay(d), startOfDay(new Date()));
-}
-
-function updateValueHighlightState() {
-  const startEl = qs("startText");
-  const endEl = qs("endText");
-
-  const shouldHighlight = (isCalendarOpen || isQuickOpen) && hasUserSelectionInCurrentOpen;
-
-  if (startEl) {
-    const startChanged = !isSameDate(pendingStartDate, originalStartDate);
-    startEl.classList.toggle("pending", shouldHighlight && startChanged);
-  }
-
-  if (endEl) {
-    const settings = loadSettings();
-    const comparePendingEnd = settings.kind === "single" ? pendingStartDate : pendingEndDate;
-    const compareOriginalEnd = settings.kind === "single" ? originalStartDate : originalEndDate;
-    const endChanged = !isSameDate(comparePendingEnd, compareOriginalEnd);
-    endEl.classList.toggle("pending", shouldHighlight && endChanged && settings.kind === "range");
-  }
-}
-
-function setValueTexts(startDisplay, endDisplay) {
-  const startEl = qs("startText");
-  const endEl = qs("endText");
-
-  if (startEl) startEl.textContent = startDisplay || "-";
-  if (endEl) endEl.textContent = endDisplay || "-";
-
-  updateValueHighlightState();
-}
-
-function numberToDateDisplay(n) {
-  if (typeof n !== "number" || Number.isNaN(n)) return "";
-
-  if (n > 10_000_000_000) {
-    const d = new Date(n);
-    return Number.isNaN(d.getTime()) ? String(n) : toISODateOnly(d);
-  }
-
-  const base = new Date(Date.UTC(1899, 11, 30));
-  const d = new Date(base.getTime() + n * 24 * 60 * 60 * 1000);
-  return Number.isNaN(d.getTime()) ? String(n) : toISODateOnly(d);
-}
-
-function getParamDisplay(p) {
-  if (!p || !p.currentValue) return "";
-  const cv = p.currentValue;
-
-  if (typeof cv.formattedValue === "string") {
-    const fv = cv.formattedValue.trim();
-    if (fv !== "" && fv !== "0") return fv;
-  }
-
-  const raw = (cv && typeof cv === "object" && "value" in cv) ? cv.value : cv;
-
-  if (raw instanceof Date && !Number.isNaN(raw.getTime())) return toISODateOnly(raw);
-
-  if (typeof raw === "string") {
-    const d = new Date(raw);
-    if (!Number.isNaN(d.getTime())) return toISODateOnly(d);
-
-    const n = Number(raw);
-    if (!Number.isNaN(n)) return numberToDateDisplay(n);
-
-    return raw;
-  }
-
-  if (typeof raw === "number") return numberToDateDisplay(raw);
-
-  return "";
-}
-
-async function syncUIFromCurrentParameterValues(settings) {
-  if (!settings.startParam) {
-    pendingStartDate = null;
-    pendingEndDate = null;
-    originalStartDate = null;
-    originalEndDate = null;
-    hasUserSelectionInCurrentOpen = false;
-    selectedQuickType = "";
-    setValueTexts("", "");
-    updateQuickSelectionUI();
-    updateActionStates();
-    return;
-  }
-
-  const map = await getParametersMap();
-
-  const pStart = map.get(settings.startParam);
-  const startDisplay = getParamDisplay(pStart);
-
-  let endDisplay = "";
-  if (settings.kind === "single") {
-    endDisplay = startDisplay;
-  } else {
-    const pEnd = map.get(settings.endParam);
-    endDisplay = getParamDisplay(pEnd);
-  }
-
-  pendingStartDate = parseDisplayToDate(startDisplay);
-  pendingEndDate = parseDisplayToDate(endDisplay);
-
-  originalStartDate = cloneDate(pendingStartDate);
-  originalEndDate = cloneDate(pendingEndDate);
-
-  hasUserSelectionInCurrentOpen = false;
-  selectedQuickType = "";
-
-  setValueTexts(startDisplay, endDisplay);
-  updateQuickSelectionUI();
-  updateActionStates();
-}
-
-async function syncUIWithRetry(settings, tries = 8, delayMs = 250) {
-  for (let i = 0; i < tries; i++) {
-    await syncUIFromCurrentParameterValues(settings);
-
-    const s = qs("startText")?.textContent?.trim();
-    const e = qs("endText")?.textContent?.trim();
-
-    const okStart = s && s !== "-";
-    const okEnd = settings.kind === "single" ? true : (e && e !== "-");
-
-    if (okStart && okEnd) return;
-    await new Promise((r) => setTimeout(r, delayMs));
-  }
-}
-
-function ensureFlatpickrLoaded() {
-  if (typeof window.flatpickr === "undefined") {
-    setHint("flatpickr 로드 실패");
-    return false;
-  }
-  return true;
-}
-
-function destroyFP() {
-  if (fp) {
-    fp.destroy();
-    fp = null;
-  }
-}
-
-function closeConfigPanelUI() {
-  isConfigOpen = false;
-  const p = qs("cfgPanel");
-  if (p) p.classList.remove("open");
-}
-
-function openConfigPanelUI() {
-  isConfigOpen = true;
-  const p = qs("cfgPanel");
-  if (p) p.classList.add("open");
-}
-
-function closeCalendarUI() {
-  isCalendarOpen = false;
-  const h = qs("calHost");
-  if (h) h.classList.remove("open");
-  updateValueHighlightState();
-  updateActionStates();
-}
-
-function openCalendarUI() {
-  isCalendarOpen = true;
-  const h = qs("calHost");
-  if (h) h.classList.add("open");
-  updateValueHighlightState();
-  updateActionStates();
-}
-
-function closeQuickPanelUI() {
-  isQuickOpen = false;
-  const h = qs("quickHost");
-  if (h) h.classList.remove("open");
-  updateValueHighlightState();
-  updateActionStates();
-}
-
-function openQuickPanelUI() {
-  isQuickOpen = true;
-  const h = qs("quickHost");
-  if (h) h.classList.add("open");
-  updateValueHighlightState();
-  updateActionStates();
-}
-
-function getKoLocale() {
-  return {
-    weekdays: {
-      shorthand: ["일", "월", "화", "수", "목", "금", "토"],
-      longhand: ["일요일", "월요일", "화요일", "수요일", "목요일", "금요일", "토요일"]
-    },
-    months: {
-      shorthand: ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"],
-      longhand: ["1월", "2월", "3월", "4월", "5월", "6월", "7월", "8월", "9월", "10월", "11월", "12월"]
-    },
-    firstDayOfWeek: 0,
-    rangeSeparator: " ~ ",
-    scrollTitle: "스크롤하여 증가",
-    toggleTitle: "클릭하여 전환",
-    time_24hr: true
-  };
-}
-
-function applyMonthHeaderPatch(instance) {
-  const calendar = instance?.calendarContainer;
-  if (!calendar) return;
-
-  const monthsWrap = calendar.querySelector(".flatpickr-months");
-  const currentMonth = calendar.querySelector(".flatpickr-current-month");
-  const prevBtn = calendar.querySelector(".flatpickr-prev-month");
-  const nextBtn = calendar.querySelector(".flatpickr-next-month");
-  const yearWrap = currentMonth?.querySelector(".numInputWrapper");
-  const monthSelect = currentMonth?.querySelector(".flatpickr-monthDropdown-months");
-
-  if (currentMonth && yearWrap && monthSelect) {
-    currentMonth.appendChild(yearWrap);
-    currentMonth.appendChild(monthSelect);
-  }
-
-  if (monthsWrap && prevBtn && nextBtn && currentMonth) {
-    monthsWrap.innerHTML = "";
-    monthsWrap.appendChild(prevBtn);
-    monthsWrap.appendChild(currentMonth);
-    monthsWrap.appendChild(nextBtn);
-  }
-}
-
-function getCurrentSingleModeDate() {
-  if (calendarMode === "start") return pendingStartDate;
-  if (calendarMode === "end") return pendingEndDate;
-  return null;
-}
-
-function getOriginalSingleModeDate() {
-  if (calendarMode === "start") return originalStartDate;
-  if (calendarMode === "end") return originalEndDate;
-  return null;
-}
-
-function canCloseCalendarOnSameDateClick(dateObj) {
-  if (!isCalendarOpen) return false;
-  if (calendarMode !== "start" && calendarMode !== "end") return false;
-
-  const currentDate = getCurrentSingleModeDate();
-  const appliedDate = getOriginalSingleModeDate();
-
-  if (!currentDate || !appliedDate) return false;
-
-  return (
-    isSameDate(dateObj, currentDate) &&
-    isSameDate(currentDate, appliedDate) &&
-    isTodayDate(currentDate)
-  );
-}
-
-function initFlatpickr(settings) {
-  destroyFP();
-  if (!ensureFlatpickrLoaded()) return;
-
-  const input = qs("fpHidden");
-  const host = qs("calHost");
-  if (!input || !host) {
-    setHint("fpHidden 또는 calHost가 없습니다.");
-    return;
-  }
-
-  host.innerHTML = "";
-
-  const fpMode = calendarMode === "range" ? "range" : "single";
-
-  fp = flatpickr(input, {
-    mode: fpMode,
-    dateFormat: settings.format || DEFAULTS.format,
-    allowInput: false,
-    clickOpens: false,
-    inline: true,
-    appendTo: host,
-    locale: getKoLocale(),
-    monthSelectorType: "static",
-    prevArrow: "<",
-    nextArrow: ">",
-
-    onReady: (selectedDates, dateStr, instance) => {
-      applyMonthHeaderPatch(instance);
-    },
-
-    onMonthChange: (selectedDates, dateStr, instance) => {
-      applyMonthHeaderPatch(instance);
-    },
-
-    onYearChange: (selectedDates, dateStr, instance) => {
-      applyMonthHeaderPatch(instance);
-    },
-
-    onOpen: () => setHint(""),
-
-    onChange: (selectedDates) => {
-      hasUserSelectionInCurrentOpen = true;
-      selectedQuickType = "";
-      updateQuickSelectionUI();
-
-      if (calendarMode === "start") {
-        const picked = selectedDates[0] || null;
-        if (!picked) return;
-        pendingStartDate = picked;
-
-        setValueTexts(
-          pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
-          pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
-        );
-      } else if (calendarMode === "end") {
-        const picked = selectedDates[0] || null;
-        if (!picked) return;
-        pendingEndDate = picked;
-
-        setValueTexts(
-          pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
-          pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
-        );
-      } else {
-        const start = selectedDates[0] || null;
-        const end = selectedDates[1] || null;
-
-        pendingStartDate = start;
-        pendingEndDate = end || null;
-
-        setValueTexts(
-          pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
-          pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
-        );
-      }
-
-      updateActionStates();
-    },
-
-    onDayCreate: (dObj, dStr, instance, dayElem) => {
-      const dateObj = dayElem.dateObj;
-      if (!dateObj) return;
-
-      if (canCloseCalendarOnSameDateClick(dateObj)) {
-        dayElem.classList.add("same-date-close");
-        dayElem.title = "오늘 날짜가 이미 적용되어 있어 다시 누르면 닫힙니다.";
-      }
-
-      dayElem.addEventListener("mousedown", (e) => {
-        if (!canCloseCalendarOnSameDateClick(dateObj)) return;
-
-        e.preventDefault();
-        e.stopPropagation();
-        closeCalendarUI();
-        setHint("");
-      });
-    }
-  });
-
-  closeCalendarUI();
+html, body {
+  margin: 0;
+  padding: 0;
+  background: transparent;
+  font-family: system-ui, -apple-system, Segoe UI, Roboto, "Noto Sans KR", sans-serif;
+  overflow: hidden;
+}
+
+.rangeBar {
+  width: 600px;
+  height: 50px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 0 10px;
+  background: transparent;
+  position: relative;
+  box-sizing: border-box;
+  overflow: hidden;
+}
+
+.rangeLine {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  white-space: nowrap;
+  flex: 1 1 auto;
+  min-width: max-content;
+}
+
+.label {
+  font-size: 14px;
+  font-weight: 800;
+  color: rgba(0, 0, 0, 0.72);
+}
+
+.value {
+  font-size: 15px;
+  font-weight: 900;
+  color: rgba(0, 0, 0, 0.95);
+  transition:
+    color 0.18s ease,
+    background-color 0.18s ease,
+    border-color 0.18s ease,
+    box-shadow 0.18s ease,
+    transform 0.18s ease;
+}
+
+.dateValue {
+  cursor: pointer;
+  text-decoration: none;
+  border-radius: 9px;
+  padding: 5px 8px;
+  border: 1px solid rgba(0, 0, 0, 0.12);
+  background: linear-gradient(180deg, rgba(255,255,255,0.98), rgba(244,247,251,0.98));
+  box-shadow:
+    0 1px 2px rgba(0,0,0,0.05),
+    0 0 0 1px rgba(255,255,255,0.8) inset;
+  font-size: 15px;
+  flex-shrink: 0;
+}
+
+.dateValue:hover {
+  border-color: rgba(49, 112, 245, 0.28);
+  box-shadow:
+    0 2px 6px rgba(49, 112, 245, 0.10),
+    0 0 0 1px rgba(49, 112, 245, 0.08) inset;
+  transform: translateY(-1px);
+}
+
+.dateValue.pending {
+  color: #245fdc;
+  background: rgba(49, 112, 245, 0.10);
+  border-color: rgba(49, 112, 245, 0.30);
+  box-shadow:
+    0 2px 8px rgba(49, 112, 245, 0.12),
+    0 0 0 1px rgba(49, 112, 245, 0.10) inset;
+}
+
+.sep {
+  font-size: 14px;
+  font-weight: 800;
+  color: rgba(0, 0, 0, 0.24);
+  margin: 0;
+}
+
+.topActions {
+  display: flex;
+  align-items: center;
+  gap: 4px;
+  flex-shrink: 1;
+  min-width: 0;
+}
+
+.miniBtn {
+  height: 30px;
+  min-width: 64px;
+  padding: 0 10px;
+  border-radius: 9px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 800;
+  line-height: 1;
+  white-space: nowrap;
+  word-break: keep-all;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  transition:
+    background-color 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease,
+    box-shadow 0.16s ease,
+    opacity 0.16s ease,
+    transform 0.16s ease;
 }
 
-async function applyDatesToParameters(settings, start, end) {
-  const { kind, startParam, endParam } = settings;
-
-  if (!startParam) throw new Error("시작 파라미터가 설정되지 않았습니다.");
-  if (kind === "range" && !endParam) throw new Error("종료 파라미터가 설정되지 않았습니다.");
-  if (!start) throw new Error("시작날짜를 선택하세요.");
-  if (kind === "range" && !end) throw new Error("종료날짜를 선택하세요.");
-
-  const map = await getParametersMap();
-
-  const pStart = map.get(startParam);
-  if (!pStart) throw new Error(`파라미터를 찾을 수 없습니다: ${startParam}`);
-  await pStart.changeValueAsync(toISODateOnly(start));
-
-  if (kind === "range") {
-    const pEnd = map.get(endParam);
-    if (!pEnd) throw new Error(`파라미터를 찾을 수 없습니다: ${endParam}`);
-    await pEnd.changeValueAsync(toISODateOnly(end));
-  }
-}
-
-function isSinglePickingMode() {
-  return isCalendarOpen && (calendarMode === "start" || calendarMode === "end");
-}
-
-function isRangePickingMode() {
-  return isCalendarOpen && calendarMode === "range";
-}
-
-function isQuickPickingMode() {
-  return isQuickOpen;
-}
-
-function isDateEditingState() {
-  return isCalendarOpen || isQuickOpen;
-}
-
-function canEnableRangeMode(settings) {
-  if (settings.kind !== "range") return false;
-  return !isSinglePickingMode() && !isQuickPickingMode();
-}
-
-function canEnableQuickMode() {
-  return !isSinglePickingMode() && !isRangePickingMode();
-}
-
-function hasPendingChange(settings) {
-  const comparePendingEnd = settings.kind === "single" ? pendingStartDate : pendingEndDate;
-  const compareOriginalEnd = settings.kind === "single" ? originalStartDate : originalEndDate;
-
-  return (
-    !isSameDate(pendingStartDate, originalStartDate) ||
-    !isSameDate(comparePendingEnd, compareOriginalEnd)
-  );
-}
-
-function canEnableApply(settings) {
-  if (isApplying) return false;
-  if (!isDateEditingState()) return false;
-  if (!pendingStartDate) return false;
-  if (settings.kind === "range" && !pendingEndDate) return false;
-  if (!hasPendingChange(settings)) return false;
-  return true;
-}
-
-function updatePrimaryModeButton() {
-  const settings = loadSettings();
-  const btn = qs("rangeModeBtn");
-  if (!btn) return;
-
-  const isRangeOpen = isRangePickingMode();
-  btn.textContent = isRangeOpen ? "취소" : "기간변경";
-
-  const enabled = !isApplying && (isRangeOpen || canEnableRangeMode(settings));
-  btn.disabled = !enabled;
-
-  btn.classList.remove("btn-range-active", "btn-range-inactive", "btn-range-cancel");
-  if (isRangeOpen) {
-    btn.classList.add(enabled ? "btn-range-cancel" : "btn-range-inactive");
-  } else if (enabled) {
-    btn.classList.add("btn-range-active");
-  } else {
-    btn.classList.add("btn-range-inactive");
-  }
-}
-
-function updateQuickModeButton() {
-  const btn = qs("quickModeBtn");
-  if (!btn) return;
-
-  const isOpen = isQuickPickingMode();
-  btn.textContent = isOpen ? "취소" : "퀵선택";
-
-  const enabled = !isApplying && (isOpen || canEnableQuickMode());
-  btn.disabled = !enabled;
-
-  btn.classList.remove("btn-quick-active", "btn-quick-inactive", "btn-quick-cancel");
-  if (isOpen) {
-    btn.classList.add(enabled ? "btn-quick-cancel" : "btn-quick-inactive");
-  } else if (enabled) {
-    btn.classList.add("btn-quick-active");
-  } else {
-    btn.classList.add("btn-quick-inactive");
-  }
-}
-
-function updateApplyButton() {
-  const settings = loadSettings();
-  const btn = qs("applyBtn");
-  if (!btn) return;
-
-  const enabled = canEnableApply(settings);
-  btn.disabled = !enabled;
-  btn.textContent = isApplying ? "적용 중..." : "적용";
-
-  btn.classList.remove("btn-primary-active", "btn-primary-inactive", "loading");
-  if (isApplying) {
-    btn.classList.add("btn-primary-active", "loading");
-  } else if (enabled) {
-    btn.classList.add("btn-primary-active");
-  } else {
-    btn.classList.add("btn-primary-inactive");
-  }
-}
-
-function updateActionStates() {
-  updatePrimaryModeButton();
-  updateQuickModeButton();
-  updateApplyButton();
-}
-
-function restorePendingToOriginal(settings) {
-  pendingStartDate = cloneDate(originalStartDate);
-  pendingEndDate = settings.kind === "single" ? cloneDate(originalStartDate) : cloneDate(originalEndDate);
-  selectedQuickType = "";
-  hasUserSelectionInCurrentOpen = false;
-
-  setValueTexts(
-    pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
-    pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
-  );
-
-  updateQuickSelectionUI();
-}
-
-function openCalendarFor(mode) {
-  if (isConfigOpen || isApplying) return;
-
-  calendarMode = mode;
-  const settings = loadSettings();
-
-  closeQuickPanelUI();
-  initFlatpickr(settings);
-
-  openCalendarUI();
-
-  hasUserSelectionInCurrentOpen = false;
-  selectedQuickType = "";
-  updateQuickSelectionUI();
-
-  if (!fp) return;
-
-  if (mode === "start" && pendingStartDate) {
-    fp.setDate(pendingStartDate, false);
-  } else if (mode === "end" && pendingEndDate) {
-    fp.setDate(pendingEndDate, false);
-  } else if (mode === "range" && pendingStartDate && pendingEndDate) {
-    fp.setDate([pendingStartDate, pendingEndDate], false);
-  } else if (mode === "range" && pendingStartDate) {
-    fp.setDate([pendingStartDate], false);
-  } else {
-    fp.clear();
-  }
-
-  updateValueHighlightState();
-  updateActionStates();
-}
-
-function cancelRangeSelection() {
-  const settings = loadSettings();
-  restorePendingToOriginal(settings);
-  closeCalendarUI();
-  setHint("");
-}
-
-function cancelQuickSelection() {
-  const settings = loadSettings();
-  restorePendingToOriginal(settings);
-  closeQuickPanelUI();
-  setHint("");
-}
-
-function getDateRangeError(settings) {
-  if (!pendingStartDate) return "시작날짜를 선택하세요.";
-
-  const finalEnd = settings.kind === "single" ? pendingStartDate : pendingEndDate;
-
-  if (settings.kind === "range" && !finalEnd) {
-    return "종료날짜를 선택하세요.";
-  }
-
-  if (
-    settings.kind === "range" &&
-    pendingStartDate &&
-    finalEnd &&
-    pendingStartDate > finalEnd
-  ) {
-    return "시작날짜는 종료날짜보다 늦을 수 없습니다.";
-  }
-
-  return "";
-}
-
-async function applyPendingDates() {
-  const settings = loadSettings();
-
-  if (!isDateEditingState() || isApplying) return;
-
-  const err = getDateRangeError(settings);
-  if (err) {
-    setHint(err);
-    showToast(err);
-    updateActionStates();
-    return;
-  }
-
-  const finalEnd = settings.kind === "single" ? pendingStartDate : pendingEndDate;
-
-  try {
-    isApplying = true;
-    setHint("조회기간 적용 중입니다...");
-    updateActionStates();
-
-    await applyDatesToParameters(settings, pendingStartDate, finalEnd);
-
-    closeCalendarUI();
-    closeQuickPanelUI();
-    await syncUIWithRetry(settings, 4, 150);
-
-    setHint("");
-  } catch (e) {
-    const msg = e?.message || String(e);
-    setHint(msg);
-    showToast(msg);
-  } finally {
-    isApplying = false;
-    updateActionStates();
-  }
-}
-
-/* ===== 퀵 선택 ===== */
-function getTodayRange() {
-  const today = startOfDay(new Date());
-  return { start: today, end: today };
-}
-
-function getThisWeekRange() {
-  const today = startOfDay(new Date());
-  const day = today.getDay();
-  const diffToMonday = day === 0 ? -6 : 1 - day;
-
-  const start = new Date(today);
-  start.setDate(today.getDate() + diffToMonday);
-
-  return { start: startOfDay(start), end: today };
+.miniBtn:hover:not(:disabled) {
+  transform: translateY(-1px);
 }
 
-function getThisMonthRange() {
-  const today = startOfDay(new Date());
-  const start = new Date(today.getFullYear(), today.getMonth(), 1);
-  return { start: startOfDay(start), end: today };
+/* 버튼별 최소폭 */
+.btn-range-active,
+.btn-range-inactive,
+.btn-range-cancel {
+  min-width: 82px;
 }
 
-function getYtdRange() {
-  const today = startOfDay(new Date());
-  const start = new Date(today.getFullYear(), 0, 1);
-  return { start: startOfDay(start), end: today };
+.btn-quick-active,
+.btn-quick-inactive,
+.btn-quick-cancel {
+  min-width: 72px;
 }
 
-function getQuickRange(type) {
-  switch (type) {
-    case "today":
-      return getTodayRange();
-    case "thisWeek":
-      return getThisWeekRange();
-    case "thisMonth":
-      return getThisMonthRange();
-    case "ytd":
-      return getYtdRange();
-    default:
-      return null;
-  }
+.btn-primary-active,
+.btn-primary-inactive {
+  min-width: 62px;
 }
-
-function applyQuickSelection(type) {
-  if (isApplying || isConfigOpen || !isQuickOpen) return;
-
-  const settings = loadSettings();
-  const range = getQuickRange(type);
-  if (!range) return;
 
-  hasUserSelectionInCurrentOpen = true;
-  selectedQuickType = type;
-
-  pendingStartDate = cloneDate(range.start);
-  pendingEndDate = settings.kind === "single"
-    ? cloneDate(range.start)
-    : cloneDate(range.end);
-
-  setValueTexts(
-    pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
-    (settings.kind === "single" ? pendingStartDate : pendingEndDate)
-      ? toISODateOnly(settings.kind === "single" ? pendingStartDate : pendingEndDate)
-      : "-"
-  );
-
-  setHint("");
-  updateQuickSelectionUI();
-  updateActionStates();
+/* 기간변경 버튼: 파란 계열 */
+.btn-range-active {
+  border: 1px solid rgba(49, 112, 245, 0.32);
+  background: rgba(49, 112, 245, 0.08);
+  color: #245fdc;
 }
 
-function updateQuickSelectionUI() {
-  const quickBtns = document.querySelectorAll(".quickBtn");
-  quickBtns.forEach((btn) => {
-    const type = btn.getAttribute("data-quick");
-    btn.classList.toggle("selected", type === selectedQuickType);
-  });
+.btn-range-active:hover:not(:disabled) {
+  background: rgba(49, 112, 245, 0.14);
+  border-color: rgba(49, 112, 245, 0.42);
 }
 
-/* ===== 설정 패널 ===== */
-function detectType(p) {
-  return (p?.dataType || p?.parameterType || p?.type || "").toString();
+.btn-range-inactive,
+.btn-range-inactive:disabled {
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: #eef2f7;
+  color: rgba(0, 0, 0, 0.42);
+  cursor: default;
+  box-shadow: none;
 }
 
-function isDateLike(p) {
-  const t = detectType(p).toLowerCase();
-  if (!t) return false;
-  return t.includes("date");
+/* 기간변경 취소 */
+.btn-range-cancel {
+  border: 1px solid rgba(214, 67, 67, 0.30);
+  background: rgba(214, 67, 67, 0.10);
+  color: #b42323;
+  box-shadow: 0 1px 2px rgba(214, 67, 67, 0.08);
 }
-
-function fillSelect(selectEl, items, selectedValue) {
-  selectEl.innerHTML = "";
 
-  const empty = document.createElement("option");
-  empty.value = "";
-  empty.textContent = "선택";
-  selectEl.appendChild(empty);
-
-  items.forEach((it) => {
-    const opt = document.createElement("option");
-    opt.value = it.name;
-    opt.textContent = it.label;
-    selectEl.appendChild(opt);
-  });
-
-  if (selectedValue) selectEl.value = selectedValue;
+.btn-range-cancel:hover:not(:disabled) {
+  background: rgba(214, 67, 67, 0.16);
+  border-color: rgba(214, 67, 67, 0.42);
 }
 
-async function loadDateParameterItems() {
-  const dash = await getDashboard();
-  const params = await dash.getParametersAsync();
-
-  return params
-    .filter(isDateLike)
-    .map((p) => {
-      const t = detectType(p);
-      return { name: p.name, label: t ? `${p.name} (${t})` : p.name };
-    })
-    .sort((a, b) => a.name.localeCompare(b.name));
+/* 퀵선택 버튼: 초록 계열 */
+.btn-quick-active {
+  border: 1px solid rgba(34, 154, 88, 0.34);
+  background: rgba(34, 154, 88, 0.10);
+  color: #197447;
 }
-
-async function hydrateConfigPanel(settings) {
-  const dash = await getDashboard();
-  const dashNameEl = qs("cfgDashName");
-  if (dashNameEl) dashNameEl.textContent = dash?.name || "-";
-
-  const items = await loadDateParameterItems();
-  setCfgHint(items.length ? "" : "날짜/시간 타입 파라미터를 찾지 못했습니다.");
-
-  const kindSel = qs("kind");
-  const startSel = qs("startParam");
-  const endSel = qs("endParam");
-  const formatInput = qs("format");
-  const rowEnd = qs("rowEnd");
-
-  if (kindSel) kindSel.value = settings.kind;
-  if (formatInput) formatInput.value = settings.format || DEFAULTS.format;
-
-  if (startSel) fillSelect(startSel, items, settings.startParam);
-  if (endSel) fillSelect(endSel, items, settings.endParam);
 
-  if (rowEnd) rowEnd.style.display = settings.kind === "single" ? "none" : "";
-
-  if (kindSel) {
-    kindSel.onchange = () => {
-      const v = kindSel.value;
-      if (rowEnd) rowEnd.style.display = v === "single" ? "none" : "";
-    };
-  }
+.btn-quick-active:hover:not(:disabled) {
+  background: rgba(34, 154, 88, 0.16);
+  border-color: rgba(34, 154, 88, 0.44);
 }
-
-async function saveConfigFromPanel() {
-  try {
-    setCfgHint("");
-
-    const kindSel = qs("kind");
-    const startSel = qs("startParam");
-    const endSel = qs("endParam");
-    const formatInput = qs("format");
-
-    const kind = (kindSel ? kindSel.value : DEFAULTS.kind) || DEFAULTS.kind;
-    const startParam = startSel ? startSel.value : "";
-    const endParam = endSel ? endSel.value : "";
-    const format = (formatInput ? formatInput.value : DEFAULTS.format).trim() || DEFAULTS.format;
 
-    if (!startParam) throw new Error("시작 파라미터를 선택하세요.");
-    if (kind === "range" && !endParam) throw new Error("종료 파라미터를 선택하세요.");
-
-    const s = tableau.extensions.settings;
-    s.set(SETTINGS_KEYS.kind, kind);
-    s.set(SETTINGS_KEYS.startParam, startParam);
-    s.set(SETTINGS_KEYS.endParam, kind === "single" ? "" : endParam);
-    s.set(SETTINGS_KEYS.format, format);
-    await s.saveAsync();
-
-    closeConfigPanelUI();
-    setCfgHint("");
-    await render();
-  } catch (e) {
-    setCfgHint(e?.message || String(e));
-  }
+.btn-quick-inactive,
+.btn-quick-inactive:disabled {
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: #eef2f7;
+  color: rgba(0, 0, 0, 0.42);
+  cursor: default;
+  box-shadow: none;
 }
 
-async function toggleConfigPanel() {
-  if (!isAuthoringMode() || isApplying) return;
-
-  if (isConfigOpen) {
-    closeConfigPanelUI();
-    setHint("");
-  } else {
-    closeCalendarUI();
-    closeQuickPanelUI();
-    openConfigPanelUI();
-    const settings = loadSettings();
-    await hydrateConfigPanel(settings);
-  }
+/* 퀵선택 취소 */
+.btn-quick-cancel {
+  border: 1px solid rgba(214, 67, 67, 0.30);
+  background: rgba(214, 67, 67, 0.10);
+  color: #b42323;
+  box-shadow: 0 1px 2px rgba(214, 67, 67, 0.08);
 }
-
-async function bindParameterChangedListeners(settings) {
-  unregisterParamHandlers.forEach((fn) => {
-    try { fn(); } catch (_) {}
-  });
-  unregisterParamHandlers = [];
+
+.btn-quick-cancel:hover:not(:disabled) {
+  background: rgba(214, 67, 67, 0.16);
+  border-color: rgba(214, 67, 67, 0.42);
+}
 
-  if (!settings.startParam) return;
-
-  const dash = await getDashboard();
-  const params = await dash.getParametersAsync();
-
-  const targets = new Set([settings.startParam]);
-  if (settings.kind === "range" && settings.endParam) targets.add(settings.endParam);
-
-  params.forEach((p) => {
-    if (!targets.has(p.name)) return;
-
-    const unregister = p.addEventListener(
-      tableau.TableauEventType.ParameterChanged,
-      async () => {
-        const s = loadSettings();
-        await syncUIWithRetry(s, 6, 200);
-      }
-    );
-
-    unregisterParamHandlers.push(unregister);
-  });
+/* 적용 버튼 */
+.btn-primary-active {
+  border: 1px solid #3170f5;
+  background: #3170f5;
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(49, 112, 245, 0.25);
 }
-
-function bindHandlers() {
-  const startText = qs("startText");
-  const endText = qs("endText");
-  const rangeModeBtn = qs("rangeModeBtn");
-  const quickModeBtn = qs("quickModeBtn");
-  const applyBtn = qs("applyBtn");
-  const settingsBtn = qs("settingsBtn");
-  const cfgCloseBtn = qs("cfgCloseBtn");
-  const cfgSaveBtn = qs("cfgSaveBtn");
-  const cfgPanel = qs("cfgPanel");
-  const calHost = qs("calHost");
-  const quickHost = qs("quickHost");
-  const quickBtns = document.querySelectorAll(".quickBtn");
-
-  if (startText) {
-    startText.onclick = (e) => {
-      e.stopPropagation();
-      openCalendarFor("start");
-    };
-  }
-
-  if (endText) {
-    endText.onclick = (e) => {
-      e.stopPropagation();
-      openCalendarFor("end");
-    };
-  }
-
-  if (rangeModeBtn) {
-    rangeModeBtn.onclick = (e) => {
-      e.stopPropagation();
-
-      if (isApplying) return;
-
-      if (isRangePickingMode()) {
-        cancelRangeSelection();
-        return;
-      }
-
-      const settings = loadSettings();
-      if (!canEnableRangeMode(settings)) return;
-      openCalendarFor("range");
-    };
-  }
-
-  if (quickModeBtn) {
-    quickModeBtn.onclick = (e) => {
-      e.stopPropagation();
-
-      if (isApplying) return;
-
-      if (isQuickPickingMode()) {
-        cancelQuickSelection();
-        return;
-      }
-
-      if (!canEnableQuickMode()) return;
 
-      closeCalendarUI();
-      openQuickPanelUI();
-      hasUserSelectionInCurrentOpen = false;
-      selectedQuickType = "";
-      updateQuickSelectionUI();
-      updateActionStates();
-    };
-  }
-
-  quickBtns.forEach((btn) => {
-    btn.onclick = (e) => {
-      e.stopPropagation();
-      const type = btn.getAttribute("data-quick");
-      applyQuickSelection(type);
-    };
-  });
-
-  if (applyBtn) {
-    applyBtn.onclick = async (e) => {
-      e.stopPropagation();
-      const settings = loadSettings();
-      if (!canEnableApply(settings) && !isApplying) return;
-      await applyPendingDates();
-    };
-  }
-
-  if (settingsBtn) {
-    settingsBtn.onclick = async (e) => {
-      e.stopPropagation();
-      await toggleConfigPanel();
-    };
-  }
-
-  if (cfgPanel) {
-    cfgPanel.onclick = (e) => e.stopPropagation();
-    cfgPanel.onmousedown = (e) => e.stopPropagation();
-  }
-
-  if (calHost) {
-    calHost.onclick = (e) => e.stopPropagation();
-    calHost.onmousedown = (e) => e.stopPropagation();
-  }
-
-  if (quickHost) {
-    quickHost.onclick = (e) => e.stopPropagation();
-    quickHost.onmousedown = (e) => e.stopPropagation();
-  }
-
-  if (cfgCloseBtn) cfgCloseBtn.onclick = async () => { closeConfigPanelUI(); };
-  if (cfgSaveBtn) cfgSaveBtn.onclick = async () => { await saveConfigFromPanel(); };
+.btn-primary-active:hover:not(:disabled) {
+  background: #255fe0;
+  border-color: #255fe0;
 }
-
-function updateQuickPanelVisibility() {
-  const settings = loadSettings();
-  const weekBtn = document.querySelector('[data-quick="thisWeek"]');
-  const monthBtn = document.querySelector('[data-quick="thisMonth"]');
-  const ytdBtn = document.querySelector('[data-quick="ytd"]');
-  const hintEl = qs("quickHint");
 
-  if (settings.kind === "single") {
-    if (weekBtn) weekBtn.style.display = "none";
-    if (monthBtn) monthBtn.style.display = "none";
-    if (ytdBtn) ytdBtn.style.display = "none";
-    if (hintEl) hintEl.style.display = "none";
-  } else {
-    if (weekBtn) weekBtn.style.display = "";
-    if (monthBtn) monthBtn.style.display = "";
-    if (ytdBtn) ytdBtn.style.display = "";
-    if (hintEl) hintEl.style.display = "";
-  }
+.btn-primary-inactive,
+.btn-primary-inactive:disabled {
+  border: 1px solid rgba(0, 0, 0, 0.10);
+  background: #eef2f7;
+  color: rgba(0, 0, 0, 0.42);
+  cursor: default;
+  box-shadow: none;
 }
 
-async function render() {
-  await setFrameSizeFixed();
-
-  const settings = loadSettings();
-
-  const settingsBtn = qs("settingsBtn");
-  if (settingsBtn) settingsBtn.style.display = isAuthoringMode() ? "inline-flex" : "none";
-
-  if (!isAuthoringMode()) closeConfigPanelUI();
-
-  if (!settings.startParam || (settings.kind === "range" && !settings.endParam)) {
-    setHint(isAuthoringMode() ? "⚙ 설정에서 파라미터를 매핑하세요." : "조회기간 설정이 아직 완료되지 않았습니다.");
-    pendingStartDate = null;
-    pendingEndDate = null;
-    originalStartDate = null;
-    originalEndDate = null;
-    hasUserSelectionInCurrentOpen = false;
-    selectedQuickType = "";
-    setValueTexts("", "");
-    updateQuickSelectionUI();
-    updateActionStates();
-  } else {
-    setHint("");
-  }
-
-  initFlatpickr(settings);
-  bindHandlers();
-  updateQuickPanelVisibility();
-  await bindParameterChangedListeners(settings);
-
-  if (settings.startParam) {
-    await syncUIWithRetry(settings);
-  } else {
-    updateActionStates();
-  }
+.settingsBtn {
+  height: 28px;
+  width: 28px;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  display: none;
+  font-size: 22px;
+  line-height: 1;
+  padding: 0;
 }
 
-async function init() {
-  await tableau.extensions.initializeAsync();
-
-  tableau.extensions.settings.addEventListener(
-    tableau.TableauEventType.SettingsChanged,
-    async () => { await render(); }
-  );
-
-  await render();
+.fpHidden {
+  position: fixed;
+  left: 0;
+  top: 0;
+  width: 1px;
+  height: 1px;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.hint {
+  margin-top: 3px;
+  font-size: 11px;
+  color: rgba(0,0,0,0.62);
+  min-height: 14px;
+  padding: 0 10px;
+  box-sizing: border-box;
+}
+
+.quickHost,
+.calHost,
+.cfgPanel {
+  width: 600px;
+  box-sizing: border-box;
+  display: none;
+}
+
+.quickHost.open,
+.calHost.open,
+.cfgPanel.open {
+  display: block;
+}
+
+.quickHost {
+  min-height: 48px;
+  border-top: 1px solid rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.98);
+  padding: 8px 10px;
+}
+
+.quickBar {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  flex-wrap: wrap;
+}
+
+.quickBtn {
+  height: 28px;
+  padding: 0 12px;
+  border-radius: 999px;
+  border: 1px solid rgba(34, 154, 88, 0.22);
+  background: rgba(34, 154, 88, 0.07);
+  color: #197447;
+  font-size: 11px;
+  font-weight: 800;
+  cursor: pointer;
+  transition:
+    background-color 0.16s ease,
+    border-color 0.16s ease,
+    color 0.16s ease,
+    box-shadow 0.16s ease,
+    transform 0.16s ease;
+}
+
+.quickBtn:hover:not(:disabled) {
+  background: rgba(34, 154, 88, 0.13);
+  border-color: rgba(34, 154, 88, 0.32);
+  transform: translateY(-1px);
+}
+
+.quickBtn.selected {
+  background: #229a58;
+  border-color: #229a58;
+  color: #fff;
+  box-shadow: 0 1px 2px rgba(34, 154, 88, 0.24);
+}
+
+.quickHint {
+  font-size: 11px;
+  color: rgba(0, 0, 0, 0.55);
+  margin-left: 4px;
+}
+
+/* 확장 전체 높이 200 고정 전제에서 달력 영역 */
+.calHost {
+  height: 136px;
+  overflow: hidden;
+  overflow-x: hidden;
+  border-top: 1px solid rgba(0,0,0,0.10);
+  background: rgba(255,255,255,0.98);
+  padding: 6px 8px;
+  box-sizing: border-box;
+}
+
+/* 달력 외곽 */
+.calHost .flatpickr-calendar {
+  width: 100% !important;
+  max-width: 100% !important;
+  position: static !important;
+  margin: 0 auto !important;
+  box-shadow: none !important;
+  border: 1px solid rgba(0,0,0,0.14) !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+  display: block !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+/* 헤더 */
+.calHost .flatpickr-months {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 32px !important;
+  margin-bottom: 0;
+  position: relative;
+  gap: 6px;
+  padding: 0 10px;
+  box-sizing: border-box !important;
+  background: #fff;
+  border-bottom: 1px solid rgba(0,0,0,0.14) !important;
+}
+
+.calHost .flatpickr-month {
+  height: 32px !important;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 1 1 auto;
+  min-width: 0;
+}
+
+.calHost .flatpickr-current-month {
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  width: auto !important;
+  height: 32px !important;
+  padding: 0 !important;
+  left: auto !important;
+  font-size: 15px !important;
+  line-height: 1 !important;
+  position: static !important;
+  flex: 0 1 auto;
+  min-width: 0;
+}
+
+.calHost .flatpickr-current-month .numInputWrapper {
+  order: 1;
+  width: 66px !important;
+}
+
+.calHost .flatpickr-current-month .flatpickr-monthDropdown-months {
+  order: 2;
+  max-width: 92px;
+}
+
+.calHost .flatpickr-current-month .flatpickr-monthDropdown-months,
+.calHost .flatpickr-current-month input.cur-year {
+  font-size: 15px !important;
+  font-weight: 800;
+}
+
+.calHost .flatpickr-prev-month,
+.calHost .flatpickr-next-month {
+  position: static !important;
+  padding: 0 2px !important;
+  margin: 0 !important;
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  height: 32px !important;
+  width: 22px !important;
+  min-width: 22px !important;
+  color: rgba(0,0,0,0.78) !important;
+  flex: 0 0 22px;
+}
+
+.calHost .flatpickr-prev-month:hover,
+.calHost .flatpickr-next-month:hover {
+  color: #3170f5 !important;
+}
+
+.calHost .flatpickr-prev-month svg,
+.calHost .flatpickr-next-month svg {
+  width: 14px !important;
+  height: 14px !important;
+}
+
+/* 요일 헤더 */
+.calHost .flatpickr-weekdays {
+  width: 100% !important;
+  height: 24px !important;
+  margin-bottom: 0;
+  background: #fff !important;
+  border-bottom: 1px solid rgba(0,0,0,0.10) !important;
+  box-sizing: border-box !important;
+}
+
+.calHost .flatpickr-weekdaycontainer {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  display: flex !important;
+  box-sizing: border-box !important;
+}
+
+.calHost .flatpickr-weekday {
+  height: 24px !important;
+  line-height: 24px !important;
+  font-size: 11px !important;
+  font-weight: 700 !important;
+  color: rgba(0,0,0,0.72) !important;
+  background: transparent !important;
+  flex: 1 1 calc(100% / 7) !important;
+  max-width: calc(100% / 7) !important;
+  box-sizing: border-box !important;
+}
+
+/* flatpickr 내부 컨테이너는 숨기고, 날짜 본문만 스크롤 */
+.calHost .flatpickr-innerContainer,
+.calHost .flatpickr-rContainer {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  overflow: hidden !important;
+  box-sizing: border-box !important;
+}
+
+.calHost .flatpickr-days {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  height: 72px !important;
+  max-height: 72px !important;
+  overflow-y: auto !important;
+  overflow-x: hidden !important;
+  display: block !important;
+  box-sizing: border-box !important;
+  scrollbar-width: thin;
+}
+
+.calHost .dayContainer {
+  width: 100% !important;
+  min-width: 100% !important;
+  max-width: 100% !important;
+  height: auto !important;
+  min-height: max-content !important;
+  display: block !important;
+  box-sizing: border-box !important;
+}
+
+/* 날짜 칸 */
+.calHost .flatpickr-day {
+  height: 24px !important;
+  line-height: 24px !important;
+  font-size: 12px !important;
+  font-weight: 500 !important;
+  width: 14.2857% !important;
+  max-width: 14.2857% !important;
+  margin: 0 !important;
+  border: 0 !important;
+  border-radius: 0 !important;
+  background: #fff !important;
+  box-sizing: border-box !important;
+  box-shadow:
+    inset -1px 0 0 rgba(0,0,0,0.10),
+    inset 0 -1px 0 rgba(0,0,0,0.10);
+}
+
+.calHost .flatpickr-day.prevMonthDay,
+.calHost .flatpickr-day.nextMonthDay {
+  color: rgba(0,0,0,0.22) !important;
+  background: #fafafa !important;
+}
+
+.calHost .flatpickr-day:hover {
+  background: rgba(49, 112, 245, 0.06) !important;
+}
+
+.calHost .flatpickr-day.today {
+  box-shadow:
+    inset -1px 0 0 rgba(0,0,0,0.10),
+    inset 0 -1px 0 rgba(0,0,0,0.10),
+    inset 0 0 0 1px rgba(49, 112, 245, 0.40) !important;
+}
+
+.calHost .flatpickr-day.same-date-close {
+  box-shadow:
+    inset -1px 0 0 rgba(0,0,0,0.10),
+    inset 0 -1px 0 rgba(0,0,0,0.10),
+    inset 0 0 0 1px rgba(0,0,0,0.18) !important;
+}
+
+.calHost .flatpickr-day.startRange,
+.calHost .flatpickr-day.endRange,
+.calHost .flatpickr-day.selected {
+  background: #3170f5 !important;
+  color: #fff !important;
+  box-shadow:
+    inset -1px 0 0 rgba(255,255,255,0.16),
+    inset 0 -1px 0 rgba(255,255,255,0.16) !important;
+}
+
+.calHost .flatpickr-day.inRange {
+  background: rgba(49, 112, 245, 0.13) !important;
+  color: rgba(0,0,0,0.9) !important;
+  box-shadow:
+    inset -1px 0 0 rgba(0,0,0,0.06),
+    inset 0 -1px 0 rgba(0,0,0,0.06) !important;
+}
+
+.cfgPanel {
+  height: 178px;
+  background: rgba(255,255,255,0.98);
+  border-top: 1px solid rgba(0,0,0,0.10);
+  padding: 8px 10px;
+  overflow: auto;
+}
+
+.cfgHeader { margin-bottom: 6px; }
+.cfgTitle { font-size: 13px; font-weight: 900; }
+.cfgSub { margin-top: 2px; font-size: 11px; color: rgba(0,0,0,.6); }
+
+.cfgRow { margin-top: 6px; }
+.cfgLabel { display: block; font-size: 11px; color: rgba(0,0,0,.65); margin-bottom: 4px; }
+
+.cfgSelect, .cfgInput {
+  width: 100%;
+  height: 30px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,.18);
+  padding: 0 10px;
+  font-size: 12px;
+  outline: none;
+  background: #fff;
+}
+
+.cfgHint { min-height: 14px; margin-top: 6px; font-size: 11px; color: rgba(0,0,0,.6); }
+
+.cfgFooter {
+  display: flex;
+  justify-content: flex-end;
+  gap: 8px;
+  margin-top: 8px;
+}
+
+.btn {
+  height: 30px;
+  padding: 0 10px;
+  border-radius: 8px;
+  border: 1px solid rgba(0,0,0,.18);
+  background: rgba(0,0,0,.06);
+  cursor: pointer;
+  font-size: 12px;
+}
+
+.btn.primary {
+  background: rgba(0,0,0,.88);
+  color: #fff;
+  border-color: rgba(0,0,0,.88);
+}
+
+.btn.ghost {
+  background: rgba(0,0,0,.04);
+}
+
+.toast {
+  position: fixed;
+  left: 50%;
+  bottom: 10px;
+  transform: translateX(-50%);
+  background: rgba(30, 30, 30, 0.92);
+  color: #fff;
+  font-size: 12px;
+  font-weight: 700;
+  padding: 8px 12px;
+  border-radius: 10px;
+  box-shadow: 0 4px 14px rgba(0,0,0,0.18);
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.18s ease, transform 0.18s ease;
+  z-index: 20;
+  white-space: nowrap;
+}
+
+.toast.show {
+  opacity: 1;
+  transform: translateX(-50%) translateY(0);
 }
-
-init().catch((e) => {
-  console.error(e);
-  setHint(e?.message || String(e));
-});
