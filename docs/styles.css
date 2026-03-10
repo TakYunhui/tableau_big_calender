@@ -377,6 +377,7 @@ html, body {
 }
 
 .calHost .flatpickr-current-month {
+  order: 2;
   display: flex !important;
   align-items: center;
   justify-content: center;
@@ -393,12 +394,11 @@ html, body {
 }
 
 .calHost .flatpickr-current-month .numInputWrapper {
-  order: 2;
+  order: 1;
   width: 66px !important;
 }
 
 .calHost .flatpickr-current-month .flatpickr-monthDropdown-months {
-  order: 1;
   max-width: 92px;
 }
 
