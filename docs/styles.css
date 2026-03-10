@@ -393,8 +393,11 @@ html, body {
 }
 
 .calHost .flatpickr-current-month .numInputWrapper {
-  order: 1;
   width: 66px !important;
+}
+
+.calHost .flatpickr-current-month .numInputWrapper .cur-year {
+  order: 1;
 }
 
 .calHost .flatpickr-current-month .cur-month {
