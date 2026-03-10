@@ -128,11 +128,6 @@ function startOfDay(d) {
   return x;
 }
 
-function isTodayDate(d) {
-  if (!d) return false;
-  return isSameDate(startOfDay(d), startOfDay(new Date()));
-}
-
 function updateValueHighlightState() {
   const startEl = qs("startText");
   const endEl = qs("endText");
@@ -380,12 +375,11 @@ function canCloseCalendarOnSameDateClick(dateObj) {
   const currentDate = getCurrentSingleModeDate();
   const appliedDate = getOriginalSingleModeDate();
 
-  if (!currentDate || !appliedDate) return false;
+  if (!dateObj || !currentDate || !appliedDate) return false;
 
   return (
     isSameDate(dateObj, currentDate) &&
-    isSameDate(currentDate, appliedDate) &&
-    isTodayDate(currentDate)
+    isSameDate(currentDate, appliedDate)
   );
 }
 
@@ -475,7 +469,7 @@ function initFlatpickr(settings) {
 
       if (canCloseCalendarOnSameDateClick(dateObj)) {
         dayElem.classList.add("same-date-close");
-        dayElem.title = "오늘 날짜가 이미 적용되어 있어 다시 누르면 닫힙니다.";
+        dayElem.title = "현재 적용된 날짜입니다. 다시 누르면 달력이 닫힙니다.";
       }
 
       dayElem.addEventListener("mousedown", (e) => {
