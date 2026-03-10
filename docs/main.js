@@ -360,6 +360,7 @@ function applyMonthHeaderPatch(instance) {
     monthsWrap.appendChild(nextBtn);
   }
 }
+
 function getCurrentSingleModeDate() {
   if (calendarMode === "start") return pendingStartDate;
   if (calendarMode === "end") return pendingEndDate;
@@ -785,7 +786,7 @@ function getQuickRange(type) {
   }
 }
 
-function applyQuickSelection(type) {
+async function applyQuickSelection(type) {
   if (isApplying || isConfigOpen || !isQuickOpen) return;
 
   const settings = loadSettings();
@@ -810,6 +811,18 @@ function applyQuickSelection(type) {
   setHint("");
   updateQuickSelectionUI();
   updateActionStates();
+
+  if (!hasPendingChange(settings)) {
+    closeQuickPanelUI();
+    hasUserSelectionInCurrentOpen = false;
+    selectedQuickType = "";
+    updateQuickSelectionUI();
+    updateValueHighlightState();
+    updateActionStates();
+    return;
+  }
+
+  await applyPendingDates();
 }
 
 function updateQuickSelectionUI() {
@@ -1036,10 +1049,10 @@ function bindHandlers() {
   }
 
   quickBtns.forEach((btn) => {
-    btn.onclick = (e) => {
+    btn.onclick = async (e) => {
       e.stopPropagation();
       const type = btn.getAttribute("data-quick");
-      applyQuickSelection(type);
+      await applyQuickSelection(type);
     };
   });
 
