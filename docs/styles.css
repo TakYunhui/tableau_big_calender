@@ -405,17 +405,6 @@ html, body {
   padding-right: 14px !important;
 }
 
-.calHost .flatpickr-current-month .yearSuffix {
-  display: inline-flex;
-  align-items: center;
-  justify-content: center;
-  font-size: 15px;
-  font-weight: 800;
-  color: rgba(0,0,0,0.88);
-  line-height: 1;
-  margin: 0 4px 0 2px;
-  pointer-events: none;
-}
 
 .calHost .flatpickr-current-month .cur-month {
   order: 2;
