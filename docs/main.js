@@ -348,28 +348,28 @@ function applyMonthHeaderPatch(instance) {
   const yearWrap = currentMonth?.querySelector(".numInputWrapper");
   const monthSelect = currentMonth?.querySelector(".flatpickr-monthDropdown-months");
 
-  // "년" suffix 추가 (input 바깥)
-  if (currentMonth && !currentMonth.querySelector(".yearSuffix")) {
-    const suffix = document.createElement("span");
+  if (!monthsWrap || !currentMonth || !prevBtn || !nextBtn || !yearWrap || !monthSelect) {
+    return;
+  }
+
+  let suffix = currentMonth.querySelector(".yearSuffix");
+  if (!suffix) {
+    suffix = document.createElement("span");
     suffix.className = "yearSuffix";
     suffix.textContent = "년";
-
-    if (monthSelect) {
-      currentMonth.insertBefore(suffix, monthSelect);
-    }
   }
 
-  if (currentMonth && yearWrap && monthSelect) {
-    currentMonth.appendChild(yearWrap);
-    currentMonth.appendChild(monthSelect);
-  }
+  // currentMonth 내부를 원하는 순서로 다시 조립
+  currentMonth.innerHTML = "";
+  currentMonth.appendChild(yearWrap);
+  currentMonth.appendChild(suffix);
+  currentMonth.appendChild(monthSelect);
 
-  if (monthsWrap && prevBtn && nextBtn && currentMonth) {
-    monthsWrap.innerHTML = "";
-    monthsWrap.appendChild(prevBtn);
-    monthsWrap.appendChild(currentMonth);
-    monthsWrap.appendChild(nextBtn);
-  }
+  // months 헤더도 다시 조립
+  monthsWrap.innerHTML = "";
+  monthsWrap.appendChild(prevBtn);
+  monthsWrap.appendChild(currentMonth);
+  monthsWrap.appendChild(nextBtn);
 }
 
 function getCurrentSingleModeDate() {
