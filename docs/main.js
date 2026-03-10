@@ -348,6 +348,13 @@ function applyMonthHeaderPatch(instance) {
   const yearWrap = currentMonth?.querySelector(".numInputWrapper");
   const monthSelect = currentMonth?.querySelector(".flatpickr-monthDropdown-months");
 
+  if (yearWrap && !yearWrap.querySelector(".yearSuffix")) {
+    const suffix = document.createElement("span");
+    suffix.className = "yearSuffix";
+    suffix.textContent = "년";
+    yearWrap.appendChild(suffix);
+  }
+  
   if (currentMonth && yearWrap && monthSelect) {
     currentMonth.appendChild(yearWrap);
     currentMonth.appendChild(monthSelect);
