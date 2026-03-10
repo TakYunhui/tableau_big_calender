@@ -405,14 +405,10 @@ html, body {
   padding-right: 14px !important;
 }
 
-.calHost .flatpickr-current-month .numInputWrapper .yearSuffix {
-  position: absolute;
-  right: 2px;
-  top: 50%;
-  transform: translateY(-50%);
+.calHost .yearSuffix {
   font-size: 15px;
   font-weight: 800;
-  color: rgba(0,0,0,0.88);
+  margin: 0 4px;
   pointer-events: none;
 }
 
