@@ -348,30 +348,18 @@ function applyMonthHeaderPatch(instance) {
   const yearWrap = currentMonth?.querySelector(".numInputWrapper");
   const monthSelect = currentMonth?.querySelector(".flatpickr-monthDropdown-months");
 
-  if (!monthsWrap || !currentMonth || !prevBtn || !nextBtn || !yearWrap || !monthSelect) {
-    return;
+  if (currentMonth && yearWrap && monthSelect) {
+    currentMonth.appendChild(yearWrap);
+    currentMonth.appendChild(monthSelect);
   }
 
-  let suffix = currentMonth.querySelector(".yearSuffix");
-  if (!suffix) {
-    suffix = document.createElement("span");
-    suffix.className = "yearSuffix";
-    suffix.textContent = "년";
+  if (monthsWrap && prevBtn && nextBtn && currentMonth) {
+    monthsWrap.innerHTML = "";
+    monthsWrap.appendChild(prevBtn);
+    monthsWrap.appendChild(currentMonth);
+    monthsWrap.appendChild(nextBtn);
   }
-
-  // currentMonth 내부를 원하는 순서로 다시 조립
-  currentMonth.innerHTML = "";
-  currentMonth.appendChild(yearWrap);
-  currentMonth.appendChild(suffix);
-  currentMonth.appendChild(monthSelect);
-
-  // months 헤더도 다시 조립
-  monthsWrap.innerHTML = "";
-  monthsWrap.appendChild(prevBtn);
-  monthsWrap.appendChild(currentMonth);
-  monthsWrap.appendChild(nextBtn);
 }
-
 function getCurrentSingleModeDate() {
   if (calendarMode === "start") return pendingStartDate;
   if (calendarMode === "end") return pendingEndDate;
