@@ -398,6 +398,7 @@ html, body {
 
 .calHost .flatpickr-current-month .numInputWrapper .cur-year {
   order: 1;
+  text-align: left !important;
 }
 
 .calHost .flatpickr-current-month .cur-month {
@@ -412,7 +413,6 @@ html, body {
 .calHost .flatpickr-current-month input.cur-year {
   font-size: 15px !important;
   font-weight: 800;
-  text-align: center !important;
 }
 
 .calHost .flatpickr-prev-month,
