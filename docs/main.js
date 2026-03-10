@@ -39,7 +39,7 @@ function qs(id) {
 
 function setHint(msg) {
   const el = qs("hint");
-  if (el) el.textContent = msg || "";
+  if (el) el.textContent = "";
 }
 
 function setCfgHint(msg) {
@@ -722,7 +722,7 @@ async function applyPendingDates() {
 
   try {
     isApplying = true;
-    setHint("조회기간 적용 중입니다...");
+    showToast("조회기간 적용 중입니다...");
     updateActionStates();
 
     await applyDatesToParameters(settings, pendingStartDate, finalEnd);
