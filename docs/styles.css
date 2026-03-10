@@ -442,6 +442,7 @@ html, body {
   background: #fff !important;
   border-bottom: 1px solid rgba(0,0,0,0.10) !important;
   box-sizing: border-box !important;
+  overflow: hidden !important;
 }
 
 .calHost .flatpickr-weekdaycontainer {
@@ -449,6 +450,7 @@ html, body {
   min-width: 100% !important;
   max-width: 100% !important;
   display: flex !important;
+  flex-wrap: nowrap !important;
   box-sizing: border-box !important;
 }
 
@@ -459,9 +461,20 @@ html, body {
   font-weight: 700 !important;
   color: rgba(0,0,0,0.72) !important;
   background: transparent !important;
-  flex: 1 1 calc(100% / 7) !important;
-  max-width: calc(100% / 7) !important;
   box-sizing: border-box !important;
+
+  flex: 0 0 14.2857% !important;
+  width: 14.2857% !important;
+  min-width: 14.2857% !important;
+  max-width: 14.2857% !important;
+
+  margin: 0 !important;
+  padding: 0 !important;
+
+  display: flex !important;
+  align-items: center;
+  justify-content: center;
+  text-align: center !important;
 }
 
 /* flatpickr 내부 컨테이너는 숨기고, 날짜 본문만 스크롤 */
