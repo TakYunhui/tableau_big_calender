@@ -453,7 +453,7 @@ html, body {
   display: flex !important;
   flex-wrap: nowrap !important;
   box-sizing: border-box !important;
-  padding-right: 12px;
+  padding-right: 11.5px;
 }
 
 .calHost .flatpickr-weekday {
