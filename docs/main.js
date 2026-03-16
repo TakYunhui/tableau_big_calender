@@ -611,7 +611,7 @@ function updateApplyButton() {
 
   const enabled = canEnableApply(settings);
   btn.disabled = !enabled;
-  btn.textContent = isApplying ? "적용 중..." : "적용";
+  btn.textContent = isApplying ? "적용중" : "적용";
 
   btn.classList.remove("btn-primary-active", "btn-primary-inactive", "loading");
   if (isApplying) {
