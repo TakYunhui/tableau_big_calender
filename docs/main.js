@@ -9,7 +9,7 @@ const SETTINGS_KEYS = {
 
 const DEFAULTS = {
   kind: "range",
-  format: "Y-mm-dd",
+  format: "YY.m.d",
 };
 
 const FRAME_WIDTH = 600;
