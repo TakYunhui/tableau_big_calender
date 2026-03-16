@@ -39,7 +39,7 @@ function qs(id) {
 
 function setHint(msg) {
   const el = qs("hint");
-  if (el) el.textContent = "";
+  if (el) el.textContent = msg || "";
 }
 
 function setCfgHint(msg) {
@@ -106,13 +106,24 @@ function toISODateOnly(d) {
   return `${y}-${m}-${day}`;
 }
 
+function toUIDateDisplay(d) {
+  if (!(d instanceof Date) || Number.isNaN(d.getTime())) return "";
+  const y = d.getFullYear();
+  const m = d.getMonth() + 1;
+  const day = d.getDate();
+  return `${y}.${m}.${day}`;
+}
+
 function cloneDate(d) {
   return d ? new Date(d.getTime()) : null;
 }
 
 function parseDisplayToDate(text) {
   if (!text || text === "-") return null;
-  const d = new Date(text);
+
+  const normalized = String(text).trim().replace(/\./g, "-");
+  const d = new Date(normalized);
+
   return Number.isNaN(d.getTime()) ? null : d;
 }
 
@@ -163,12 +174,12 @@ function numberToDateDisplay(n) {
 
   if (n > 10_000_000_000) {
     const d = new Date(n);
-    return Number.isNaN(d.getTime()) ? String(n) : toISODateOnly(d);
+    return Number.isNaN(d.getTime()) ? String(n) : toUIDateDisplay(d);
   }
 
   const base = new Date(Date.UTC(1899, 11, 30));
   const d = new Date(base.getTime() + n * 24 * 60 * 60 * 1000);
-  return Number.isNaN(d.getTime()) ? String(n) : toISODateOnly(d);
+  return Number.isNaN(d.getTime()) ? String(n) : toUIDateDisplay(d);
 }
 
 function getParamDisplay(p) {
@@ -182,11 +193,12 @@ function getParamDisplay(p) {
 
   const raw = (cv && typeof cv === "object" && "value" in cv) ? cv.value : cv;
 
-  if (raw instanceof Date && !Number.isNaN(raw.getTime())) return toISODateOnly(raw);
+  if (raw instanceof Date && !Number.isNaN(raw.getTime())) return toUIDateDisplay(raw);
 
   if (typeof raw === "string") {
-    const d = new Date(raw);
-    if (!Number.isNaN(d.getTime())) return toISODateOnly(d);
+    const normalized = raw.trim().replace(/\./g, "-");
+    const d = new Date(normalized);
+    if (!Number.isNaN(d.getTime())) return toUIDateDisplay(d);
 
     const n = Number(raw);
     if (!Number.isNaN(n)) return numberToDateDisplay(n);
@@ -435,8 +447,8 @@ function initFlatpickr(settings) {
         pendingStartDate = picked;
 
         setValueTexts(
-          pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
-          pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
+          pendingStartDate ? toUIDateDisplay(pendingStartDate) : "-",
+          pendingEndDate ? toUIDateDisplay(pendingEndDate) : "-"
         );
       } else if (calendarMode === "end") {
         const picked = selectedDates[0] || null;
@@ -444,8 +456,8 @@ function initFlatpickr(settings) {
         pendingEndDate = picked;
 
         setValueTexts(
-          pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
-          pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
+          pendingStartDate ? toUIDateDisplay(pendingStartDate) : "-",
+          pendingEndDate ? toUIDateDisplay(pendingEndDate) : "-"
         );
       } else {
         const start = selectedDates[0] || null;
@@ -455,8 +467,8 @@ function initFlatpickr(settings) {
         pendingEndDate = end || null;
 
         setValueTexts(
-          pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
-          pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
+          pendingStartDate ? toUIDateDisplay(pendingStartDate) : "-",
+          pendingEndDate ? toUIDateDisplay(pendingEndDate) : "-"
         );
       }
 
@@ -624,8 +636,8 @@ function restorePendingToOriginal(settings) {
   hasUserSelectionInCurrentOpen = false;
 
   setValueTexts(
-    pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
-    pendingEndDate ? toISODateOnly(pendingEndDate) : "-"
+    pendingStartDate ? toUIDateDisplay(pendingStartDate) : "-",
+    pendingEndDate ? toUIDateDisplay(pendingEndDate) : "-"
   );
 
   updateQuickSelectionUI();
@@ -796,9 +808,9 @@ async function applyQuickSelection(type) {
     : cloneDate(range.end);
 
   setValueTexts(
-    pendingStartDate ? toISODateOnly(pendingStartDate) : "-",
+    pendingStartDate ? toUIDateDisplay(pendingStartDate) : "-",
     (settings.kind === "single" ? pendingStartDate : pendingEndDate)
-      ? toISODateOnly(settings.kind === "single" ? pendingStartDate : pendingEndDate)
+      ? toUIDateDisplay(settings.kind === "single" ? pendingStartDate : pendingEndDate)
       : "-"
   );
 
