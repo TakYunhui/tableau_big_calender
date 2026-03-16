@@ -111,7 +111,7 @@ function toUIDateDisplay(d) {
   const y = d.getFullYear();
   const m = d.getMonth() + 1;
   const day = d.getDate();
-  return `${y}. ${m}. ${day}`;
+  return `${y}. ${m}. ${day}.`;
 }
 
 function cloneDate(d) {
