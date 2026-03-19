@@ -589,7 +589,7 @@ function updateQuickModeButton() {
   if (!btn) return;
 
   const isOpen = isQuickPickingMode();
-  btn.textContent = isOpen ? "취소" : "퀵선택";
+  btn.textContent = isOpen ? "취소" : "빠른조회";
 
   const enabled = !isApplying && (isOpen || canEnableQuickMode());
   btn.disabled = !enabled;
